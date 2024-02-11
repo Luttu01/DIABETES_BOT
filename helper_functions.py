@@ -105,7 +105,6 @@ Fetch name of given spotify playlist @playlist_url
 Used in @./bot_commands.play function 
 '''
 def get_spotify_playlist_name(playlist_url):
-    # Fetch the playlist details
     try:
         playlist_details = sp.playlist(playlist_url)
         playlist_name = playlist_details['name']
@@ -125,8 +124,6 @@ def update_url_counter(url):
             with open(r'C:\Users\absol\Desktop\python\DIABETESBOT\url_counter.json', 'w') as write_file:
                 open_json[url] = open_json[url] + 1 if url in open_json else 1
                 json.dump(open_json, write_file, indent=4)
-                read_file.close()
-                write_file.close()
     except (FileNotFoundError, json.JSONDecodeError) as e:
         print(e)
 
@@ -141,8 +138,23 @@ def update_request_counter(user):
             with open(r'C:\Users\absol\Desktop\python\DIABETESBOT\play_requests_counter.json', 'w') as write_file:
                 open_json[user] = open_json[user] + 1 if user in open_json else 1
                 json.dump(open_json, write_file, indent=4)
-                read_file.close()
-                write_file.close()
+    except (FileNotFoundError, json.JSONDecodeError) as e:
+        print(e)
+
+'''
+Update values of ./aliases.json
+Used in @./bot_commands.alias function
+'''
+def update_aliases(url, new_name):
+    try:
+        with open(r'C:\Users\absol\Desktop\python\DIABETESBOT\aliases.json', 'r') as read_file:
+            aliases = json.load(read_file)
+        if url in aliases.keys():
+            return False
+        with open(r'C:\Users\absol\Desktop\python\DIABETESBOT\aliases.json', 'w') as write_file:
+            aliases[url] = new_name
+            json.dump(aliases, write_file, indent=4)
+            return True
     except (FileNotFoundError, json.JSONDecodeError) as e:
         print(e)
 
@@ -201,3 +213,29 @@ async def get_player(ctx, url):
             await ctx.send("There was an error processing your request. Please try a different URL or check the URL format.")
             print(e)
         return player
+    
+def assert_url(url, flag = None):
+    return "spotify" in url or "youtube" in url or "soundcloud" in url
+
+def get_alias_from_url(url):
+     with open(r'C:\Users\absol\Desktop\python\DIABETESBOT\aliases.json', 'r') as read_file:
+        aliases = json.load(read_file)
+        return aliases[url]
+     
+def get_url_from_alias(alias):
+     with open(r'C:\Users\absol\Desktop\python\DIABETESBOT\aliases.json', 'r') as read_file:
+        aliases = json.load(read_file)
+        for url, current_alias in aliases.items():
+            if current_alias == alias:
+                return url
+        return False
+
+def get_aliases():
+    with open(r'C:\Users\absol\Desktop\python\DIABETESBOT\aliases.json', 'r') as read_file:
+        aliases = json.load(read_file)
+        return set(aliases.values())
+
+def get_alias_urls():
+    with open(r'C:\Users\absol\Desktop\python\DIABETESBOT\aliases.json', 'r') as read_file:
+        aliases = json.load(read_file)
+        return set(aliases.keys())

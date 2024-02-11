@@ -2,6 +2,7 @@ import random
 from .helper_functions import *
 
 
+
 @bot.command(name='join', help='Tells the bot to join the voice channel')
 async def join(ctx):
     if not ctx.message.author.voice:
@@ -9,6 +10,7 @@ async def join(ctx):
         return
     
     sort_counter()
+    # top_songs = await fetch_top_songs(ctx)
 
     channel = ctx.message.author.voice.channel
     await channel.connect()
@@ -19,24 +21,28 @@ async def join(ctx):
 
 @bot.command(name='play', help='Plays a song from YouTube')
 @is_author_in_voice_channel()
-async def play(ctx, url, flag=None):
-    print(url)
-    print(ctx.author.id)
-    print(ctx.author.name)
+async def play(ctx, query, flag=None):
     if not ctx.voice_client:
         await join(ctx)
     
-    if flag != '-t':
-        update_url_counter(url)
+    if flag != '-t' and (assert_url(query) or query in get_aliases()):
+        print("updating values")
+        if query in get_aliases():
+            update_url = get_url_from_alias(query)
+        else:
+            update_url = query
+        update_url_counter(update_url)
         update_request_counter(ctx.author.name)
 
-    async with ctx.typing():  
-        if 'playlist' in url and "spotify" in url:
+    async with ctx.typing():
+        if query in get_aliases():
+            url = get_url_from_alias(query)
+
+        elif 'playlist' in query and "spotify" in query:
             try:
-                tracks = get_spotify_playlist_tracks(url)
-                playlist_name = get_spotify_playlist_name(url)
+                tracks = get_spotify_playlist_tracks(query)
+                playlist_name = get_spotify_playlist_name(query)
                 for track in tracks:
-                    print(track)
                     url = await get_youtube_link(track)
                     player = await YTDLSource.from_url(url, loop=bot.loop, stream=True)
                     queue.append(player)
@@ -45,13 +51,14 @@ async def play(ctx, url, flag=None):
             except youtube_dl.DownloadError as e:
                 await ctx.send("There was an error processing your request. Please try a different URL or check the URL format.")
                 print(e)
+        else:
+            url = query
         
         try:
             player = await get_player(ctx, url)
             if ctx.voice_client.is_playing() or ctx.voice_client.is_paused():
                 queue.append(player)
                 await ctx.send(f'Added to queue: {player.title}, at position {len(queue)}')
-                print(queue)
             else:
                 ctx.voice_client.play(player, after=lambda e: None)
                 await ctx.send(f'Now playing: {player.title}')
@@ -71,7 +78,6 @@ async def skip(ctx):
     ctx.voice_client.stop()
     await ctx.send("Skipped the song.")
 
-    # Check if there are more songs in the queue and play the next one
     await check_queue(ctx)
 
 
@@ -115,23 +121,6 @@ async def remove(ctx, position: int = 1):
         await ctx.send("The queue is currently empty.")
 
 
-# @bot.command(name='queue', help='Displays the current song queue')
-# @is_author_in_voice_channel()
-# async def show_queue(ctx):
-#     if len(queue) == 0:
-#         await ctx.send("The queue is currently empty.")
-#         return
-
-#     message = "Current Queue:\n"
-#     for i, song in enumerate(queue, 1):
-#         message += f"{i}. {song.title}\n"
-
-#     # Sending the message in chunks if it's too long
-#     max_length = 2000
-#     for chunk in [message[i:i+max_length] for i in range(0, len(message), max_length)]:
-#         await ctx.send(chunk)
-
-
 @bot.command(name='queue', help='Displays the next 5 songs in the queue')
 @is_author_in_voice_channel()
 async def show_queue(ctx):
@@ -173,17 +162,17 @@ async def move(ctx, from_position: int, to_position: int = 1):
 
 @bot.command(name="die", help='Terminates the bot')
 async def die(ctx):
-    # MASTER_USER_ID = os.getenv("DISCORD_LUTTU_TOKEN")
     if str(ctx.author.id) == os.getenv("DISCORD_LUTTU_TOKEN"):
         await ctx.send("Hörs på byn")
         await bot.close()
     else:
-        await ctx.send("You lack permission, try -leave instead if you want me gone")
+        await ctx.send("You lack permission, try -leave instead if you want me gone.")
 
 
 @bot.event
 async def on_ready():
     print(f'Logged in as {bot.user.name}')
+    # top_songs = await fetch_top_songs(ctx)
 
 
 @bot.command(name="topsongs", help="Prints top 10 requested songs")
@@ -192,10 +181,23 @@ async def topsongs(ctx):
     try:
         top_songs = await fetch_top_songs(ctx)
         await ctx.send("Top 10 requested songs are: ")
-        print(top_songs)
         for title, count in top_songs:
             await ctx.send(f"Song: {title}, requested: {count} times.")
     except Exception as e:
         print(f"Error in topsongs command: {e}")
         await ctx.send("An error occurred while fetching the top songs.")
-                
+
+
+@bot.command(name="alias", help="Sets given url to given alias")
+@is_author_in_voice_channel()
+async def alias(ctx, url, new_name):
+    if not assert_url(url):
+        await ctx.send("Invalid url; make sure to send a valid youtube, spotify, or soundcloud link.")
+        return
+    success = update_aliases(url, new_name)
+    if not success:
+        existing_alias = get_alias_from_url(url)
+        await ctx.send(f"That song already exists with alias: {existing_alias}")
+    else:
+        await ctx.send(f"Successfully added alias: {new_name}")
+    
