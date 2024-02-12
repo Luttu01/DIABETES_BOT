@@ -2,7 +2,6 @@ import random
 from .helper_functions import *
 
 
-
 @bot.command(name='join', help='Tells the bot to join the voice channel')
 async def join(ctx):
     if not ctx.message.author.voice:
@@ -25,14 +24,9 @@ async def play(ctx, query, flag=None):
     if not ctx.voice_client:
         await join(ctx)
     
-    if flag != '-t' and (assert_url(query) or query in get_aliases()):
-        print("updating values")
-        if query in get_aliases():
-            update_url = get_url_from_alias(query)
-        else:
-            update_url = query
-        update_url_counter(update_url)
-        update_request_counter(ctx.author.name)
+    if not assert_url(query) and not assert_alias(query):
+        await ctx.send("Not a valid url.")
+        return
 
     async with ctx.typing():
         if query in get_aliases():
@@ -44,7 +38,7 @@ async def play(ctx, query, flag=None):
                 playlist_name = get_spotify_playlist_name(query)
                 for track in tracks:
                     url = await get_youtube_link(track)
-                    player = await YTDLSource.from_url(url, loop=bot.loop, stream=True)
+                    player = await get_player(ctx, url)
                     queue.append(player)
                 await ctx.send(f"added to queue: {playlist_name}")
                 return
@@ -62,6 +56,10 @@ async def play(ctx, query, flag=None):
             else:
                 ctx.voice_client.play(player, after=lambda e: None)
                 await ctx.send(f'Now playing: {player.title}')
+            
+            if flag != '-t':
+                update_url_counter(url, player.title)
+                update_request_counter(ctx.author.name)
             
         except youtube_dl.DownloadError as e:
             await ctx.send("There was an error processing your request. Please try a different URL or check the URL format.")
@@ -172,7 +170,6 @@ async def die(ctx):
 @bot.event
 async def on_ready():
     print(f'Logged in as {bot.user.name}')
-    # top_songs = await fetch_top_songs(ctx)
 
 
 @bot.command(name="topsongs", help="Prints top 10 requested songs")
@@ -180,6 +177,9 @@ async def on_ready():
 async def topsongs(ctx):
     try:
         top_songs = await fetch_top_songs(ctx)
+        if not top_songs:
+            await ctx.send("no songs to display")
+            return
         await ctx.send("Top 10 requested songs are: ")
         for title, count in top_songs:
             await ctx.send(f"Song: {title}, requested: {count} times.")
@@ -194,10 +194,64 @@ async def alias(ctx, url, new_name):
     if not assert_url(url):
         await ctx.send("Invalid url; make sure to send a valid youtube, spotify, or soundcloud link.")
         return
-    success = update_aliases(url, new_name)
+    success = add_alias(url, new_name)
     if not success:
         existing_alias = get_alias_from_url(url)
         await ctx.send(f"That song already exists with alias: {existing_alias}")
     else:
         await ctx.send(f"Successfully added alias: {new_name}")
     
+
+@bot.command(name="rmalias", help="remove given alias")
+@is_author_in_voice_channel()
+async def rmalias(ctx, alias):
+    print(alias)
+    if not assert_alias(alias):
+        await ctx.send("Not an existing alias")
+        return
+    success = remove_alias(alias)
+    if success:
+        await ctx.send(f"Successfully removed alias: {alias}")
+
+
+@bot.command(name="aliases", help="Shows existing aliases")
+@is_author_in_voice_channel()
+async def aliases(ctx):
+    aliases_list = get_aliases()
+    items_per_page = 10  # Adjust the number of items per page as needed
+    pages = [aliases_list[i:i + items_per_page] for i in range(0, len(aliases_list), items_per_page)]
+    current_page = 0
+
+    if not pages:  # If there are no aliases to display
+        await ctx.send("No aliases found.")
+        return
+
+    # Send the initial message with the first page of aliases
+    message = await ctx.send(f"**Aliases (Page {current_page + 1}/{len(pages)}):**\n" + '\n'.join(pages[current_page]))
+
+    # Add navigation reactions
+    await message.add_reaction('⬅️')
+    await message.add_reaction('➡️')
+
+    def check(reaction, user):
+        return user == ctx.author and str(reaction.emoji) in ['⬅️', '➡️'] and reaction.message.id == message.id
+
+    while True:
+        try:
+            reaction, user = await bot.wait_for('reaction_add', timeout=60.0, check=check)
+
+            # Navigate pages
+            if str(reaction.emoji) == '➡️' and current_page < len(pages) - 1:
+                current_page += 1
+            elif str(reaction.emoji) == '⬅️' and current_page > 0:
+                current_page -= 1
+            else:
+                await message.remove_reaction(reaction, user)
+                continue
+
+            # Edit the message for the new page
+            await message.edit(content=f"**Aliases (Page {current_page + 1}/{len(pages)}):**\n" + '\n'.join(pages[current_page]))
+            await message.remove_reaction(reaction, user)
+        except asyncio.TimeoutError:
+            await message.clear_reactions()
+            break

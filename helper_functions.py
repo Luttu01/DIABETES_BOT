@@ -117,13 +117,17 @@ def get_spotify_playlist_name(playlist_url):
 Update values of ./url_counter.json
 Used in @./bot_commands.play function
 '''
-def update_url_counter(url):
+def update_url_counter(url, title):
     try:
         with open(r'C:\Users\absol\Desktop\python\DIABETESBOT\url_counter.json', 'r') as read_file:
             open_json = json.load(read_file)
-            with open(r'C:\Users\absol\Desktop\python\DIABETESBOT\url_counter.json', 'w') as write_file:
-                open_json[url] = open_json[url] + 1 if url in open_json else 1
-                json.dump(open_json, write_file, indent=4)
+        if url in open_json:
+            open_json[url][0] += 1
+        else:
+            open_json[url] = [1, title]
+        with open(r'C:\Users\absol\Desktop\python\DIABETESBOT\url_counter.json', 'w') as write_file:
+            # open_json[url] = open_json[url] + 1 if url in open_json else 1
+            json.dump(open_json, write_file, indent=4)
     except (FileNotFoundError, json.JSONDecodeError) as e:
         print(e)
 
@@ -142,10 +146,10 @@ def update_request_counter(user):
         print(e)
 
 '''
-Update values of ./aliases.json
+Add given alias to ./aliases.json
 Used in @./bot_commands.alias function
 '''
-def update_aliases(url, new_name):
+def add_alias(url, new_name):
     try:
         with open(r'C:\Users\absol\Desktop\python\DIABETESBOT\aliases.json', 'r') as read_file:
             aliases = json.load(read_file)
@@ -159,17 +163,37 @@ def update_aliases(url, new_name):
         print(e)
 
 '''
+Remove given alias from ./aliases.json
+Used in @./bot_commands.rmalias function
+'''
+def remove_alias(alias):
+    if not assert_alias(alias):
+        return False
+    try:
+        with open(r'C:\Users\absol\Desktop\python\DIABETESBOT\aliases.json', 'r') as read_file:
+            aliases = json.load(read_file)
+        url = get_url_from_alias(alias)
+        if url:
+            del aliases[url]
+        else:
+            return False
+        with open(r'C:\Users\absol\Desktop\python\DIABETESBOT\aliases.json', 'w') as write_file:
+            json.dump(aliases, write_file, indent=4)
+            return True
+    except (FileNotFoundError, json.JSONDecodeError) as e:
+        print(e)
+
+'''
 Sort ./url_counter.json in descending order
 used in @./bot_commands.join function
 '''
 def sort_counter():
     try:
-        with open(r'C:\Users\absol\Desktop\python\DIABETESBOT\url_counter.json', 'r') as file:
-            data = json.load(file)
-        sorted_data = dict(sorted(data.items(), key=lambda x: x[1], reverse=True))
-        with open(r'C:\Users\absol\Desktop\python\DIABETESBOT\url_counter.json', 'w') as file:
-            json.dump(sorted_data, file, indent=4)
-        file.close()
+        with open(r'C:\Users\absol\Desktop\python\DIABETESBOT\url_counter.json', 'r') as read_file:
+            data = json.load(read_file)
+        sorted_data = dict(sorted(data.items(), key=lambda x: x[1][0], reverse=True))
+        with open(r'C:\Users\absol\Desktop\python\DIABETESBOT\url_counter.json', 'w') as write_file:
+            json.dump(sorted_data, write_file, indent=4)
     except FileNotFoundError:
         print("File not found.")
     except json.JSONDecodeError:
@@ -183,17 +207,11 @@ async def fetch_top_songs(ctx):
     async with ctx.typing():
         try:
             with open(r'C:\Users\absol\Desktop\python\DIABETESBOT\url_counter.json', 'r') as file:
-                data = json.load(file).items()
-                list_of_tuples = []
-                loop_counter = 0
-                for url, counter in data:
-                    if "playlist" in url:
-                        continue
-                    if loop_counter >= 10:
-                        return list_of_tuples
-                    player = await get_player(ctx, url)
-                    list_of_tuples.append((player.title, counter))
-                    loop_counter += 1
+                data = json.load(file)
+                print(data)
+            list_of_tuples = [(data[value][1], data[value][0]) for value in data]
+            print(list_of_tuples)
+            return list_of_tuples
         except Exception as e:
             print(f"In fetch_top_songs: {e}")
             return []
@@ -233,9 +251,12 @@ def get_url_from_alias(alias):
 def get_aliases():
     with open(r'C:\Users\absol\Desktop\python\DIABETESBOT\aliases.json', 'r') as read_file:
         aliases = json.load(read_file)
-        return set(aliases.values())
+        return list(aliases.values())
 
 def get_alias_urls():
     with open(r'C:\Users\absol\Desktop\python\DIABETESBOT\aliases.json', 'r') as read_file:
         aliases = json.load(read_file)
-        return set(aliases.keys())
+        return list(aliases.keys())
+
+def assert_alias(alias):
+    return alias in get_aliases()
