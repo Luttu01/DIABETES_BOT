@@ -190,16 +190,19 @@ async def topsongs(ctx):
 
 @bot.command(name="alias", help="Sets given url to given alias")
 @is_author_in_voice_channel()
-async def alias(ctx, url, new_name):
+async def alias(ctx, url, new_alias):
     if not assert_url(url):
         await ctx.send("Invalid url; make sure to send a valid youtube, spotify, or soundcloud link.")
         return
-    success = add_alias(url, new_name)
+    if assert_alias(new_alias):
+        await ctx.send("That alias already exists.")
+        return
+    success = add_alias(url, new_alias)
     if not success:
         existing_alias = get_alias_from_url(url)
         await ctx.send(f"That song already exists with alias: {existing_alias}")
     else:
-        await ctx.send(f"Successfully added alias: {new_name}")
+        await ctx.send(f"Successfully added alias: {new_alias}")
     
 
 @bot.command(name="rmalias", help="remove given alias")
