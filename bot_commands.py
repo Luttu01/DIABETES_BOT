@@ -9,7 +9,6 @@ async def join(ctx):
         return
     
     sort_counter()
-    # top_songs = await fetch_top_songs(ctx)
 
     channel = ctx.message.author.voice.channel
     await channel.connect()
@@ -56,6 +55,9 @@ async def play(ctx, query, flag=None):
             else:
                 ctx.voice_client.play(player, after=lambda e: None)
                 await ctx.send(f'Now playing: {player.title}')
+                global now_playing
+                now_playing = player.title
+                print(f"np is now: {now_playing}")
             
             if flag != '-t':
                 update_url_counter(url, player.title)
@@ -161,7 +163,7 @@ async def move(ctx, from_position: int, to_position: int = 1):
 @bot.command(name="die", help='Terminates the bot')
 async def die(ctx):
     if str(ctx.author.id) == os.getenv("DISCORD_LUTTU_TOKEN"):
-        await ctx.send("Hörs på byn")
+        await ctx.send("Hörs på byn.")
         await bot.close()
     else:
         await ctx.send("You lack permission, try -leave instead if you want me gone.")
@@ -208,7 +210,6 @@ async def alias(ctx, url, new_alias):
 @bot.command(name="rmalias", help="remove given alias")
 @is_author_in_voice_channel()
 async def rmalias(ctx, alias):
-    print(alias)
     if not assert_alias(alias):
         await ctx.send("Not an existing alias")
         return
@@ -258,3 +259,13 @@ async def aliases(ctx):
         except asyncio.TimeoutError:
             await message.clear_reactions()
             break
+
+
+@bot.command(name="np", help="Displays currently playing song")
+@is_author_in_voice_channel()
+async def nowplaying(ctx):
+    if ctx.voice_client.is_playing():
+        if now_playing:
+            await ctx.send(f"Currently playing: {now_playing}.")
+    else:
+        await ctx.send("Not playing anything right now.")

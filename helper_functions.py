@@ -19,7 +19,6 @@ def is_author_in_voice_channel():
     return decorator
 
 '''
-!CURRENTLY UNUSED!
 Play next song if queue is not empty
 and bot is not playing anything currently
 '''
@@ -30,6 +29,7 @@ async def check_queue(ctx):
             try:
                 ctx.voice_client.play(next_song, after=lambda e: print(f"Error in playback: {e}" if e else "Playback finished."))
                 await ctx.send(f'Now playing: {next_song.title}')
+                now_playing = next_song.title
             except Exception as e:
                 await ctx.send(f"Error playing the song: {e}")
                 # Handle the error or log it
@@ -69,7 +69,6 @@ play next song
 '''
 @tasks.loop(seconds=1.0)
 async def play_next_song(ctx):
-    # print('loop called')
     if ctx.voice_client and not ctx.voice_client.is_playing() and not ctx.voice_client.is_paused():
         if queue:
             next_song = queue.pop(0)
@@ -126,7 +125,6 @@ def update_url_counter(url, title):
         else:
             open_json[url] = [1, title]
         with open(r'C:\Users\absol\Desktop\python\DIABETESBOT\url_counter.json', 'w') as write_file:
-            # open_json[url] = open_json[url] + 1 if url in open_json else 1
             json.dump(open_json, write_file, indent=4)
     except (FileNotFoundError, json.JSONDecodeError) as e:
         print(e)
@@ -208,10 +206,8 @@ async def fetch_top_songs(ctx):
         try:
             with open(r'C:\Users\absol\Desktop\python\DIABETESBOT\url_counter.json', 'r') as file:
                 data = json.load(file)
-                print(data)
             list_of_tuples = [(data[value][1], data[value][0]) for value in data]
-            print(list_of_tuples)
-            return list_of_tuples
+            return list_of_tuples[:10]
         except Exception as e:
             print(f"In fetch_top_songs: {e}")
             return []

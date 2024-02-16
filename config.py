@@ -27,3 +27,5 @@ intents = discord.Intents.default()
 intents.guilds = True
 intents.voice_states = True
 intents.message_content = True
+
+commands = ["join", "play", "skip", "leave", "shuffle", "remove", "queue", "move", "die", "topsongs", "alias", "rmalias", "aliases", "np"]

@@ -17,6 +17,7 @@ sp = spotipy.Spotify(auth_manager=SpotifyClientCredentials(client_id=os.getenv('
 
 queue = []
 top_songs = []
+now_playing = ""
 
 class YTDLSource(discord.PCMVolumeTransformer):
     def __init__(self, source, *, data, volume=0.5):
