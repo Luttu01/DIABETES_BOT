@@ -269,3 +269,47 @@ async def nowplaying(ctx):
             await ctx.send(f"Currently playing: {now_playing}.")
     else:
         await ctx.send("Not playing anything right now.")
+
+
+@bot.command(name="commands", help="Shows existing commands")
+@is_author_in_voice_channel()
+async def show_commands(ctx):
+    # global current_commands
+    commands_list = current_commands
+    items_per_page = 10  # Adjust the number of items per page as needed
+    pages = [commands_list[i:i + items_per_page] for i in range(0, len(commands_list), items_per_page)]
+    current_page = 0
+
+    if not pages:  # If there are no aliases to display
+        await ctx.send("No commands found.")
+        return
+
+    # Send the initial message with the first page of aliases
+    message = await ctx.send(f"**Commands (Page {current_page + 1}/{len(pages)}):**\n" + '\n'.join(pages[current_page]))
+
+    # Add navigation reactions
+    await message.add_reaction('⬅️')
+    await message.add_reaction('➡️')
+
+    def check(reaction, user):
+        return user == ctx.author and str(reaction.emoji) in ['⬅️', '➡️'] and reaction.message.id == message.id
+
+    while True:
+        try:
+            reaction, user = await bot.wait_for('reaction_add', timeout=60.0, check=check)
+
+            # Navigate pages
+            if str(reaction.emoji) == '➡️' and current_page < len(pages) - 1:
+                current_page += 1
+            elif str(reaction.emoji) == '⬅️' and current_page > 0:
+                current_page -= 1
+            else:
+                await message.remove_reaction(reaction, user)
+                continue
+
+            # Edit the message for the new page
+            await message.edit(content=f"**Commands (Page {current_page + 1}/{len(pages)}):**\n" + '\n'.join(pages[current_page]))
+            await message.remove_reaction(reaction, user)
+        except asyncio.TimeoutError:
+            await message.clear_reactions()
+            break
