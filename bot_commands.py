@@ -33,17 +33,20 @@ async def play(ctx, query, flag=None):
 
         elif 'playlist' in query and "spotify" in query:
             try:
-                tracks = get_spotify_playlist_tracks(query)
-                playlist_name = get_spotify_playlist_name(query)
-                for track in tracks:
-                    url = await get_youtube_link(track)
-                    player = await get_player(ctx, url)
-                    queue.append(player)
-                await ctx.send(f"added to queue: {playlist_name}")
+                await process_spotify_playlist(ctx, query)
                 return
             except youtube_dl.DownloadError as e:
                 await ctx.send("There was an error processing your request. Please try a different URL or check the URL format.")
                 print(e)
+        
+        elif 'playlist' in query and "youtube" in query:
+            try:
+                await process_yt_playlist(ctx, query)
+                return
+            except youtube_dl.DownloadError as e:
+                await ctx.send("There was an error processing your request. Please try a different URL or check the URL format.")
+                print(e)
+
         else:
             url = query
         

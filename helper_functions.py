@@ -256,3 +256,69 @@ def get_alias_urls():
 
 def assert_alias(alias):
     return alias in get_aliases()
+
+
+def get_youtube_playlist_urls(url):
+    youtube = build('youtube', 'v3', developerKey=os.getenv('YT_API_KEY'))
+    request = youtube.playlistItems().list(
+        part="snippet",
+        playlistId= _extract_playlist_id(url),
+        maxResults=50  # API allows up to 50 items per request
+    )
+    
+    response = request.execute()
+    
+    video_urls = []
+    for item in response.get('items', []):
+        video_id = item['snippet']['resourceId']['videoId']
+        video_urls.append(f'https://www.youtube.com/watch?v={video_id}')
+    
+    return video_urls
+
+def get_yt_playlist_name(url):
+    youtube = build('youtube', 'v3', developerKey=os.getenv('YT_API_KEY'))
+    request = youtube.playlists().list(
+        part="snippet",
+        id= _extract_playlist_id(url),
+    )
+    
+    response = request.execute()
+    
+    playlist_name = response['items'][0]['snippet']['title']
+    return playlist_name
+
+
+def _extract_playlist_id(url):
+    parsed_url = urlparse(url)
+    query_string = parse_qs(parsed_url.query)
+    playlist_id = query_string.get("list", [None])[0]
+    return playlist_id
+
+
+async def process_yt_playlist(ctx, query):
+    try:
+        tracks = get_youtube_playlist_urls(query)
+        for url in tracks:
+            player = await get_player(ctx, url)
+            if player is None:
+                await ctx.send("Problem processing a song, moving on to the next one.")
+                continue
+            queue.append(player)
+        await ctx.send(f"Added '{get_yt_playlist_name(query)}' to the queue.")
+        return
+    except youtube_dl.DownloadError as e:
+        await ctx.send("There was an error processing your request. Please try a different URL or check the URL format.")
+        print(e)
+
+async def process_spotify_playlist(ctx, query):
+    tracks = get_spotify_playlist_tracks(query)
+    playlist_name = get_spotify_playlist_name(query)
+    for track in tracks:
+        url = await get_youtube_link(track)
+        player = await get_player(ctx, url)
+        if player is None:
+            await ctx.send("Problem processing a song, moving on to the next one.")
+            continue
+        queue.append(player)
+    await ctx.send(f"added to queue: {playlist_name}")
+    return
