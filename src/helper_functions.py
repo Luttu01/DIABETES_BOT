@@ -1,6 +1,7 @@
 from . import *
 from functools import wraps
 
+
 '''
 Wrapper for bot.commands to check 
 that the requester is in a voice channel
@@ -118,13 +119,13 @@ Used in @./bot_commands.play function
 '''
 def update_url_counter(url, title):
     try:
-        with open(r'C:\Users\absol\Desktop\python\DIABETESBOT\url_counter.json', 'r') as read_file:
+        with open(rf'{jsons_path}\url_counter.json', 'r') as read_file:
             open_json = json.load(read_file)
         if url in open_json:
             open_json[url][0] += 1
         else:
             open_json[url] = [1, title]
-        with open(r'C:\Users\absol\Desktop\python\DIABETESBOT\url_counter.json', 'w') as write_file:
+        with open(rf'{jsons_path}\url_counter.json', 'w') as write_file:
             json.dump(open_json, write_file, indent=4)
     except (FileNotFoundError, json.JSONDecodeError) as e:
         print(e)
@@ -135,9 +136,9 @@ Used in @./bot_commands.play function
 '''
 def update_request_counter(user):
     try:
-        with open(r'C:\Users\absol\Desktop\python\DIABETESBOT\play_requests_counter.json', 'r') as read_file:
+        with open(rf'{jsons_path}\play_requests_counter.json', 'r') as read_file:
             open_json = json.load(read_file)
-            with open(r'C:\Users\absol\Desktop\python\DIABETESBOT\play_requests_counter.json', 'w') as write_file:
+            with open(rf'{jsons_path}\play_requests_counter.json', 'w') as write_file:
                 open_json[user] = open_json[user] + 1 if user in open_json else 1
                 json.dump(open_json, write_file, indent=4)
     except (FileNotFoundError, json.JSONDecodeError) as e:
@@ -149,11 +150,11 @@ Used in @./bot_commands.alias function
 '''
 def add_alias(url, new_name):
     try:
-        with open(r'C:\Users\absol\Desktop\python\DIABETESBOT\aliases.json', 'r') as read_file:
+        with open(rf'{jsons_path}\aliases.json', 'r') as read_file:
             aliases = json.load(read_file)
         if url in aliases.keys():
             return False
-        with open(r'C:\Users\absol\Desktop\python\DIABETESBOT\aliases.json', 'w') as write_file:
+        with open(rf'{jsons_path}\aliases.json', 'w') as write_file:
             aliases[url] = new_name
             json.dump(aliases, write_file, indent=4)
             return True
@@ -168,14 +169,14 @@ def remove_alias(alias):
     if not assert_alias(alias):
         return False
     try:
-        with open(r'C:\Users\absol\Desktop\python\DIABETESBOT\aliases.json', 'r') as read_file:
+        with open(rf'{jsons_path}\aliases.json', 'r') as read_file:
             aliases = json.load(read_file)
         url = get_url_from_alias(alias)
         if url:
             del aliases[url]
         else:
             return False
-        with open(r'C:\Users\absol\Desktop\python\DIABETESBOT\aliases.json', 'w') as write_file:
+        with open(rf'{jsons_path}\aliases.json', 'w') as write_file:
             json.dump(aliases, write_file, indent=4)
             return True
     except (FileNotFoundError, json.JSONDecodeError) as e:
@@ -187,10 +188,10 @@ used in @./bot_commands.join function
 '''
 def sort_counter():
     try:
-        with open(r'C:\Users\absol\Desktop\python\DIABETESBOT\url_counter.json', 'r') as read_file:
+        with open(rf'{jsons_path}\url_counter.json', 'r') as read_file:
             data = json.load(read_file)
         sorted_data = dict(sorted(data.items(), key=lambda x: x[1][0], reverse=True))
-        with open(r'C:\Users\absol\Desktop\python\DIABETESBOT\url_counter.json', 'w') as write_file:
+        with open(rf'{jsons_path}\url_counter.json', 'w') as write_file:
             json.dump(sorted_data, write_file, indent=4)
     except FileNotFoundError:
         print("File not found.")
@@ -204,7 +205,7 @@ used in @./bot_commands.topsongs function
 async def fetch_top_songs(ctx):
     async with ctx.typing():
         try:
-            with open(r'C:\Users\absol\Desktop\python\DIABETESBOT\url_counter.json', 'r') as file:
+            with open(rf'{jsons_path}\url_counter.json', 'r') as file:
                 data = json.load(file)
             list_of_tuples = [(data[value][1], data[value][0]) for value in data]
             return list_of_tuples[:10]
@@ -228,16 +229,16 @@ async def get_player(ctx, url):
             print(e)
         return player
     
-def assert_url(url, flag = None):
+def assert_url(url):
     return "spotify" in url or "youtube" in url or "soundcloud" in url
 
 def get_alias_from_url(url):
-     with open(r'C:\Users\absol\Desktop\python\DIABETESBOT\aliases.json', 'r') as read_file:
+     with open(rf'{jsons_path}\aliases.json', 'r') as read_file:
         aliases = json.load(read_file)
         return aliases[url]
      
 def get_url_from_alias(alias):
-     with open(r'C:\Users\absol\Desktop\python\DIABETESBOT\aliases.json', 'r') as read_file:
+     with open(rf'{jsons_path}\aliases.json', 'r') as read_file:
         aliases = json.load(read_file)
         for url, current_alias in aliases.items():
             if current_alias == alias:
@@ -245,12 +246,12 @@ def get_url_from_alias(alias):
         return False
 
 def get_aliases():
-    with open(r'C:\Users\absol\Desktop\python\DIABETESBOT\aliases.json', 'r') as read_file:
+    with open(rf'{jsons_path}\aliases.json', 'r') as read_file:
         aliases = json.load(read_file)
         return list(aliases.values())
 
 def get_alias_urls():
-    with open(r'C:\Users\absol\Desktop\python\DIABETESBOT\aliases.json', 'r') as read_file:
+    with open(rf'{jsons_path}\aliases.json', 'r') as read_file:
         aliases = json.load(read_file)
         return list(aliases.keys())
 

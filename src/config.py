@@ -1,5 +1,7 @@
 from . import discord
 
+jsons_path = r'C:\Users\absol\Desktop\python\DIABETESBOT\res'
+
 # Configure youtube_dl
 ytdl_format_options = {
     'format': 'bestaudio/best',

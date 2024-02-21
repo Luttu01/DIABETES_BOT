@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 from googleapiclient.discovery import build
 from urllib.parse import urlparse, parse_qs
 
-load_dotenv(dotenv_path= r"C:\Users\absol\Desktop\python\DIABETESBOT\.env")
+load_dotenv(dotenv_path= r"C:\Users\absol\Desktop\python\DIABETESBOT\res\.env")
 
 ytdl = youtube_dl.YoutubeDL(ytdl_format_options)
 bot = commands.Bot(command_prefix='-', intents=intents)
