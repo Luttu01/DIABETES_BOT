@@ -19,7 +19,7 @@ async def join(ctx):
 
 @bot.command(name='play', help='Plays a song from YouTube')
 @is_author_in_voice_channel()
-async def play(ctx, query, flag=None):
+async def play(ctx, query, *flags):
     if not ctx.voice_client:
         await join(ctx)
     
@@ -50,8 +50,18 @@ async def play(ctx, query, flag=None):
         else:
             url = query
         
+        
         try:
-            player = await get_player(ctx, url)
+            if '-d' in flags:
+                if str(ctx.author.id) == os.getenv("DISCORD_LUTTU_TOKEN"):
+                    player = await get_player(ctx, url, stream=False)
+                    await ctx.send("Downloaded audio.")
+            else:
+                player = await get_player(ctx, url)
+
+            if player is None:
+                await ctx.send("Problem downloading the song, assert the url is valid.")
+                return
             if ctx.voice_client.is_playing() or ctx.voice_client.is_paused():
                 queue.append(player)
                 await ctx.send(f'Added to queue: {player.title}, at position {len(queue)}')
@@ -62,7 +72,8 @@ async def play(ctx, query, flag=None):
                 now_playing = player.title
                 print(f"np is now: {now_playing}")
             
-            if flag != '-t':
+            if '-t' not in flags:
+                print("updating counters.")
                 update_url_counter(url, player.title)
                 update_request_counter(ctx.author.name)
             
@@ -124,7 +135,7 @@ async def remove(ctx, position: int = 1):
         await ctx.send("The queue is currently empty.")
 
 
-@bot.command(name='queue', help='Displays the next 5 songs in the queue')
+@bot.command(name='q', help='Displays the next 5 songs in the queue')
 @is_author_in_voice_channel()
 async def show_queue(ctx):
     if len(queue) == 0:

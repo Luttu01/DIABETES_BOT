@@ -75,7 +75,7 @@ async def play_next_song(ctx):
             next_song = queue.pop(0)
             if next_song == None:
                 await ctx.send("Problem with this song, skipping to next one")
-                play_next_song(ctx)
+                await play_next_song(ctx)
             ctx.voice_client.play(next_song, after=lambda e: None)  # No after callback
             await ctx.send(f'Now playing: {next_song.title}')
 
@@ -214,7 +214,7 @@ async def fetch_top_songs(ctx):
             return []
     
 
-async def get_player(ctx, url):
+async def get_player(ctx, url, stream=True):
     async with ctx.typing():
         if "spotify" in url:
             try:
@@ -223,7 +223,7 @@ async def get_player(ctx, url):
                 await ctx.send("There was an error processing your request. Please try a different URL or check the URL format.")
                 print(e)
         try:
-            player = await YTDLSource.from_url(url, loop=bot.loop, stream=True)
+            player = await YTDLSource.from_url(url, loop=bot.loop, stream=stream)
         except youtube_dl.DownloadError as e:
             await ctx.send("There was an error processing your request. Please try a different URL or check the URL format.")
             print(e)
@@ -257,6 +257,11 @@ def get_alias_urls():
 
 def assert_alias(alias):
     return alias in get_aliases()
+
+def get_caches():
+    with open(rf'{jsons_path}\cache.json', 'r') as read_file:
+        caches = json.load(read_file)
+        return list(caches.keys())
 
 
 def get_youtube_playlist_urls(url):
@@ -323,3 +328,19 @@ async def process_spotify_playlist(ctx, query):
         queue.append(player)
     await ctx.send(f"added to queue: {playlist_name}")
     return
+
+def download_audio(input_url):
+    command = [
+        'ffmpeg',
+        '-i', input_url,
+        '-vn',
+        '-ar', '44100',
+        '-ac', '2',
+        '-b:a', '192k',
+        f'{cache_path}\test.mp3'
+    ]
+    try:
+        subprocess.run(command, check=True)
+        # print(f"Downloaded and saved audio to {output_path}")
+    except subprocess.CalledProcessError as e:
+        print(f"Failed to download audio: {e}")
