@@ -4,7 +4,6 @@ jsons_path = r'C:\Users\absol\Desktop\python\DIABETESBOT\res'
 cache_path = r'C:\Users\absol\Desktop\python\DIABETESBOT\cache'
 json_cache_file = os.path.join(cache_path, r'C:\Users\absol\Desktop\python\DIABETESBOT\res\cache.json')
 
-# Configure youtube_dl
 ytdl_format_options = {
     'format': 'bestaudio/best',
     'outtmpl': cache_path + r'\%(extractor)s-%(id)s-%(title)s.%(ext)s',

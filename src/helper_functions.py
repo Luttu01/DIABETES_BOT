@@ -216,14 +216,19 @@ async def fetch_top_songs(ctx):
 
 async def get_player(ctx, url, stream=True):
     async with ctx.typing():
-        if "spotify" in url:
+        spotify_url = ""
+        if "spotify" in url and url not in get_cached_urls():
             try:
+                spotify_url = url
                 url = await get_youtube_link(url)
             except youtube_dl.DownloadError as e:
                 await ctx.send("There was an error processing your request. Please try a different URL or check the URL format.")
                 print(e)
         try:
-            player = await YTDLSource.from_url(url, loop=bot.loop, stream=stream)
+            if spotify_url:
+                player = await YTDLSource.from_url(url, loop=bot.loop, stream=stream, spotify_url=spotify_url)
+            else:
+                player = await YTDLSource.from_url(url, loop=bot.loop, stream=stream)
         except youtube_dl.DownloadError as e:
             await ctx.send("There was an error processing your request. Please try a different URL or check the URL format.")
             print(e)
@@ -258,7 +263,7 @@ def get_alias_urls():
 def assert_alias(alias):
     return alias in get_aliases()
 
-def get_caches():
+def get_cached_urls():
     with open(rf'{jsons_path}\cache.json', 'r') as read_file:
         caches = json.load(read_file)
         return list(caches.keys())

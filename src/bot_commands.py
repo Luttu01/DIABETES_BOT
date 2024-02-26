@@ -1,4 +1,5 @@
 import random
+import time
 from .helper_functions import *
 
 
@@ -23,6 +24,8 @@ async def play(ctx, query, *flags):
     if not ctx.voice_client:
         await join(ctx)
     
+    start_time = time.time()
+
     if not assert_url(query) and not assert_alias(query):
         await ctx.send("Not a valid url.")
         return
@@ -50,7 +53,6 @@ async def play(ctx, query, *flags):
         else:
             url = query
         
-        
         try:
             if '-d' in flags:
                 if str(ctx.author.id) == os.getenv("DISCORD_LUTTU_TOKEN"):
@@ -58,6 +60,7 @@ async def play(ctx, query, *flags):
                     await ctx.send("Downloaded audio.")
             else:
                 player = await get_player(ctx, url)
+                await bot.wait_until_ready()
 
             if player is None:
                 await ctx.send("Problem downloading the song, assert the url is valid.")
@@ -76,6 +79,8 @@ async def play(ctx, query, *flags):
                 print("updating counters.")
                 update_url_counter(url, player.title)
                 update_request_counter(ctx.author.name)
+            
+            print(f"time: {time.time() - start_time}")
             
         except youtube_dl.DownloadError as e:
             await ctx.send("There was an error processing your request. Please try a different URL or check the URL format.")
