@@ -4,6 +4,10 @@ jsons_path = r'C:\Users\absol\Desktop\python\DIABETESBOT\res'
 cache_path = r'C:\Users\absol\Desktop\python\DIABETESBOT\cache'
 json_cache_file = os.path.join(cache_path, r'C:\Users\absol\Desktop\python\DIABETESBOT\res\cache.json')
 
+PATH = 0
+TITLE = 1
+LAST_ACCESSED = 2
+
 ytdl_format_options = {
     'format': 'bestaudio/best',
     'outtmpl': cache_path + r'\%(extractor)s-%(id)s-%(title)s.%(ext)s',

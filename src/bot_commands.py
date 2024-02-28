@@ -8,8 +8,6 @@ async def join(ctx):
     if not ctx.message.author.voice:
         await ctx.send("You are not connected to a voice channel")
         return
-    
-    sort_counter()
 
     channel = ctx.message.author.voice.channel
     await channel.connect()
@@ -60,7 +58,6 @@ async def play(ctx, query, *flags):
                     await ctx.send("Downloaded audio.")
             else:
                 player = await get_player(ctx, url)
-                await bot.wait_until_ready()
 
             if player is None:
                 await ctx.send("Problem downloading the song, assert the url is valid.")
@@ -95,7 +92,7 @@ async def skip(ctx):
         return
 
     ctx.voice_client.stop()
-    await ctx.send("Skipped the song.")
+    await ctx.send(f"Skipped the song: {now_playing}.")
 
     await check_queue(ctx)
 
@@ -190,6 +187,8 @@ async def die(ctx):
 
 @bot.event
 async def on_ready():
+    sort_cache()
+    sort_counter()
     print(f'Logged in as {bot.user.name}')
 
 
@@ -219,10 +218,7 @@ async def alias(ctx, url, new_alias):
         await ctx.send("That alias already exists.")
         return
     success = add_alias(url, new_alias)
-    if not success:
-        existing_alias = get_alias_from_url(url)
-        await ctx.send(f"That song already exists with alias: {existing_alias}")
-    else:
+    if success:
         await ctx.send(f"Successfully added alias: {new_alias}")
     
 

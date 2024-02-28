@@ -33,9 +33,8 @@ async def check_queue(ctx):
                 now_playing = next_song.title
             except Exception as e:
                 await ctx.send(f"Error playing the song: {e}")
-                # Handle the error or log it
-    else:
-        await ctx.send("The queue is empty.")
+    # else:
+    #     await ctx.send("The queue is empty.")
 
 '''
 Helper function for @get_youtube_link
@@ -214,24 +213,23 @@ async def fetch_top_songs(ctx):
             return []
     
 
-async def get_player(ctx, url, stream=True):
+async def get_player(ctx, url, stream=False):
     async with ctx.typing():
         spotify_url = ""
-        if "spotify" in url and url not in get_cached_urls():
-            try:
-                spotify_url = url
-                url = await get_youtube_link(url)
-            except youtube_dl.DownloadError as e:
-                await ctx.send("There was an error processing your request. Please try a different URL or check the URL format.")
-                print(e)
-        try:
-            if spotify_url:
-                player = await YTDLSource.from_url(url, loop=bot.loop, stream=stream, spotify_url=spotify_url)
+        if "spotify" in url:
+            parsed_url = urlparse(url)
+            spotify_url = f"{parsed_url.scheme}://{parsed_url.netloc}{parsed_url.path}"
+            if spotify_url not in get_cached_urls():
+                try:        
+                    url = await get_youtube_link(url)
+                    player = await YTDLSource.from_url(url, loop=bot.loop, stream=stream, spotify_url=spotify_url)
+                except youtube_dl.DownloadError as e:
+                    await ctx.send("There was an error processing your request. Please try a different URL or check the URL format.")
+                    print(e)
             else:
-                player = await YTDLSource.from_url(url, loop=bot.loop, stream=stream)
-        except youtube_dl.DownloadError as e:
-            await ctx.send("There was an error processing your request. Please try a different URL or check the URL format.")
-            print(e)
+                player = await YTDLSource.from_url(spotify_url, loop=bot.loop, stream=stream)
+        else:
+            player = await YTDLSource.from_url(url, loop=bot.loop, stream=stream)
         return player
     
 def assert_url(url):
@@ -309,12 +307,15 @@ def _extract_playlist_id(url):
 async def process_yt_playlist(ctx, query):
     try:
         tracks = get_youtube_playlist_urls(query)
+        to_append = []
         for url in tracks:
-            player = await get_player(ctx, url)
+            player = await get_player(ctx, url, stream=True)
             if player is None:
                 await ctx.send("Problem processing a song, moving on to the next one.")
                 continue
-            queue.append(player)
+            to_append.append(player)
+        global queue
+        queue += to_append
         await ctx.send(f"Added '{get_yt_playlist_name(query)}' to the queue.")
         return
     except youtube_dl.DownloadError as e:
@@ -322,30 +323,42 @@ async def process_yt_playlist(ctx, query):
         print(e)
 
 async def process_spotify_playlist(ctx, query):
-    tracks = get_spotify_playlist_tracks(query)
+    tracks        = get_spotify_playlist_tracks(query)
     playlist_name = get_spotify_playlist_name(query)
+    to_append     = []
     for track in tracks:
-        url = await get_youtube_link(track)
-        player = await get_player(ctx, url)
+        url    = await get_youtube_link(track)
+        player = await get_player(ctx, url, stream=True)
         if player is None:
             await ctx.send("Problem processing a song, moving on to the next one.")
             continue
-        queue.append(player)
+        to_append.append(player)
+    global queue    
+    queue += to_append
     await ctx.send(f"added to queue: {playlist_name}")
     return
 
-def download_audio(input_url):
-    command = [
-        'ffmpeg',
-        '-i', input_url,
-        '-vn',
-        '-ar', '44100',
-        '-ac', '2',
-        '-b:a', '192k',
-        f'{cache_path}\test.mp3'
-    ]
+
+def sort_cache():
     try:
-        subprocess.run(command, check=True)
-        # print(f"Downloaded and saved audio to {output_path}")
-    except subprocess.CalledProcessError as e:
-        print(f"Failed to download audio: {e}")
+        cache_path = os.path.join(jsons_path, 'cache.json')
+        with open(cache_path, 'r') as read_file:
+            data = json.load(read_file)
+
+        keys_to_delete = []
+        for cached_url in data:
+            date_to_check = datetime.datetime.strptime(data[cached_url][LAST_ACCESSED], '%Y-%m-%d')
+            current_date = datetime.datetime.now()
+            delta_time = current_date - date_to_check
+            if delta_time > datetime.timedelta(weeks=12):
+                keys_to_delete.append(cached_url)
+
+        for key in keys_to_delete:
+            os.remove(data[key][PATH])
+            del data[key]
+
+        with open(cache_path, 'w') as write_file:
+            json.dump(data, write_file, indent=4)
+
+    except json.JSONDecodeError:
+        print("Error decoding JSON.")

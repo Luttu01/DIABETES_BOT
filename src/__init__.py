@@ -34,8 +34,7 @@ class YTDLSource(discord.PCMVolumeTransformer):
         cached_path = self.check_url_in_cache(url)
         if cached_path:
             filename, title = cached_path
-            data = {'title': title}
-            return self(discord.FFmpegPCMAudio(filename), data=data)
+            return self(discord.FFmpegPCMAudio(filename), data={'title': title})
         elif stream:
             data = await loop.run_in_executor(None, lambda: ytdl.extract_info(url, download=False))
             if data is None:
@@ -43,11 +42,11 @@ class YTDLSource(discord.PCMVolumeTransformer):
             filename = data['url']
             return self(discord.FFmpegPCMAudio(filename, **ffmpeg_options), data=data)
         else:
+            print(f"downloading audio: {url}")
             data = await loop.run_in_executor(None, lambda: ytdl.extract_info(url, download=True))
             if data is None:
                 return None
             filename = ytdl.prepare_filename(data)
-            print(filename)
             if spotify_url:
                 await self.update_json_cache(spotify_url, filename, data.get('title'))
             else:
@@ -61,11 +60,11 @@ class YTDLSource(discord.PCMVolumeTransformer):
                 cache = json.load(r)
         except (FileNotFoundError, json.JSONDecodeError):
             cache = {}
-        if url in cache:
-            cache[url][2] = datetime.datetime.now().strftime("%Y-%m-%d")
+        if url in cache.keys():
+            cache[url][LAST_ACCESSED] = datetime.datetime.now().strftime("%Y-%m-%d")
             with open(rf'{jsons_path}\cache.json', "w") as w:
                 json.dump(cache, w, indent=4)
-            return (cache[url][0], cache[url][1])
+            return (cache[url][PATH], cache[url][TITLE])
         return None
 
     
@@ -73,8 +72,6 @@ class YTDLSource(discord.PCMVolumeTransformer):
     async def update_json_cache(url, path, title):
         with open(rf'{jsons_path}\cache.json', 'r') as f:
             cache = json.load(f)
-        # print(f"cache is: {cache}")
-        # print(f"url: {url}, path: {path}")
         cache[url] = [path, title, datetime.datetime.now().strftime("%Y-%m-%d")]
 
         with open(rf'{jsons_path}\cache.json', 'w') as f:
