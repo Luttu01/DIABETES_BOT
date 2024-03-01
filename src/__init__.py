@@ -5,6 +5,7 @@ import os
 import json
 import subprocess
 import datetime
+import rapidfuzz
 import yt_dlp as youtube_dl
 from .config import *
 from discord.ext import commands, tasks
@@ -16,7 +17,7 @@ from urllib.parse import urlparse, parse_qs
 load_dotenv(dotenv_path= r"C:\Users\absol\Desktop\python\DIABETESBOT\res\.env")
 
 ytdl = youtube_dl.YoutubeDL(ytdl_format_options)
-bot = commands.Bot(command_prefix='-', intents=intents)
+bot = commands.Bot(command_prefix='-', intents=intents, case_insensitive=True)
 sp = spotipy.Spotify(auth_manager=SpotifyClientCredentials(client_id=os.getenv('SPOTIFY_CLIENT_ID'), client_secret=os.getenv('SPOTIFY_CLIENT_SECRET')))
 
 queue = []

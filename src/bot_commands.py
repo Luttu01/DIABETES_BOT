@@ -3,6 +3,15 @@ import time
 from .helper_functions import *
 
 
+@bot.event
+async def on_ready():
+    print("sorting cache")
+    sort_cache()
+    print("sorting counter")
+    sort_counter()
+    print(f'Logged in as {bot.user.name}')
+
+
 @bot.command(name='join', help='Tells the bot to join the voice channel')
 async def join(ctx):
     if not ctx.message.author.voice:
@@ -16,7 +25,7 @@ async def join(ctx):
         play_next_song.start(ctx)
 
 
-@bot.command(name='play', help='Plays a song from YouTube')
+@bot.command(name='play', aliases=['p', "pl", "pla"], help='Plays a given url')
 @is_author_in_voice_channel()
 async def play(ctx, query, *flags):
     if not ctx.voice_client:
@@ -24,13 +33,13 @@ async def play(ctx, query, *flags):
     
     start_time = time.time()
 
-    if not assert_url(query) and not assert_alias(query):
+    if not assert_url(query) and not assert_alias(query.lower()):
         await ctx.send("Not a valid url.")
         return
 
     async with ctx.typing():
-        if query in get_aliases():
-            url = get_url_from_alias(query)
+        if query.lower() in get_aliases():
+            url = get_url_from_alias(query.lower())
 
         elif 'playlist' in query and "spotify" in query:
             try:
@@ -84,7 +93,7 @@ async def play(ctx, query, *flags):
             print(e)
 
 
-@bot.command(name='skip', help='Skips the currently playing song')
+@bot.command(name='skip', aliases=["s", "sk", "ski"], help='Skips the currently playing song')
 @is_author_in_voice_channel()
 async def skip(ctx):
     if not ctx.voice_client or not ctx.voice_client.is_playing():
@@ -109,7 +118,7 @@ async def leave(ctx):
         await ctx.send("The bot is not connected to a voice channel.")
 
 
-@bot.command(name='shuffle', help='Shuffles the current playlist')
+@bot.command(name='shuffle', aliases=["sh", "shu", "shuf", "shuff", "shuffl"], help='Shuffles the current playlist')
 @is_author_in_voice_channel()
 async def shuffle(ctx):
     if len(queue) > 1:
@@ -137,7 +146,7 @@ async def remove(ctx, position: int = 1):
         await ctx.send("The queue is currently empty.")
 
 
-@bot.command(name='q', help='Displays the next 5 songs in the queue')
+@bot.command(name='queue', aliases=['q', "qu", "que", "queu"], help='Displays the next 5 songs in the queue')
 @is_author_in_voice_channel()
 async def show_queue(ctx):
     if len(queue) == 0:
@@ -153,7 +162,7 @@ async def show_queue(ctx):
     await ctx.send(message)
 
 
-@bot.command(name='move', help='Move a song in the queue to a new position')
+@bot.command(name='move', aliases=["m", "mo", "mov"], help='Move a song in the queue to a new position')
 @is_author_in_voice_channel()
 async def move(ctx, from_position: int, to_position: int = 1):
     if len(queue) >= from_position > 0:
@@ -185,11 +194,7 @@ async def die(ctx):
         await ctx.send("You lack permission, try -leave instead if you want me gone.")
 
 
-@bot.event
-async def on_ready():
-    sort_cache()
-    sort_counter()
-    print(f'Logged in as {bot.user.name}')
+
 
 
 @bot.command(name="topsongs", help="Prints top 10 requested songs")
@@ -284,47 +289,3 @@ async def nowplaying(ctx):
             await ctx.send(f"Currently playing: {now_playing}.")
     else:
         await ctx.send("Not playing anything right now.")
-
-
-@bot.command(name="commands", help="Shows existing commands")
-@is_author_in_voice_channel()
-async def show_commands(ctx):
-    # global current_commands
-    commands_list = current_commands
-    items_per_page = 10  # Adjust the number of items per page as needed
-    pages = [commands_list[i:i + items_per_page] for i in range(0, len(commands_list), items_per_page)]
-    current_page = 0
-
-    if not pages:  # If there are no aliases to display
-        await ctx.send("No commands found.")
-        return
-
-    # Send the initial message with the first page of aliases
-    message = await ctx.send(f"**Commands (Page {current_page + 1}/{len(pages)}):**\n" + '\n'.join(pages[current_page]))
-
-    # Add navigation reactions
-    await message.add_reaction('⬅️')
-    await message.add_reaction('➡️')
-
-    def check(reaction, user):
-        return user == ctx.author and str(reaction.emoji) in ['⬅️', '➡️'] and reaction.message.id == message.id
-
-    while True:
-        try:
-            reaction, user = await bot.wait_for('reaction_add', timeout=60.0, check=check)
-
-            # Navigate pages
-            if str(reaction.emoji) == '➡️' and current_page < len(pages) - 1:
-                current_page += 1
-            elif str(reaction.emoji) == '⬅️' and current_page > 0:
-                current_page -= 1
-            else:
-                await message.remove_reaction(reaction, user)
-                continue
-
-            # Edit the message for the new page
-            await message.edit(content=f"**Commands (Page {current_page + 1}/{len(pages)}):**\n" + '\n'.join(pages[current_page]))
-            await message.remove_reaction(reaction, user)
-        except asyncio.TimeoutError:
-            await message.clear_reactions()
-            break
