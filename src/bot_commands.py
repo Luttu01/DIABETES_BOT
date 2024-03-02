@@ -1,14 +1,21 @@
 import random
 import time
+import rapidfuzz
 from .helper_functions import *
 
 
 @bot.event
 async def on_ready():
-    print("sorting cache")
+    cache_start_time = time.time()
+    print("sorting cache", end="", flush=True)
     sort_cache()
-    print("sorting counter")
+    print(f"\rsorting cache took: {time.time()-cache_start_time} seconds", flush=True)
+
+    counter_start_time = time.time()
+    print("sorting counter", end="", flush=True)
     sort_counter()
+    print(f"\rsorting counters took: {time.time()-counter_start_time} seconds", flush=True )
+    
     print(f'Logged in as {bot.user.name}')
 
 
@@ -27,19 +34,21 @@ async def join(ctx):
 
 @bot.command(name='play', aliases=['p', "pl", "pla"], help='Plays a given url')
 @is_author_in_voice_channel()
-async def play(ctx, query, *flags):
+async def play(ctx, query: str, *flags):
     if not ctx.voice_client:
         await join(ctx)
     
+    query_lower = query.lower()
     start_time = time.time()
 
-    if not assert_url(query) and not assert_alias(query.lower()):
+    if not assert_url(query) and not assert_alias(query_lower):
         await ctx.send("Not a valid url.")
         return
 
     async with ctx.typing():
-        if query.lower() in get_aliases():
-            url = get_url_from_alias(query.lower())
+        if query_lower in get_aliases():
+            aliases = get_aliases()
+            url = get_url_from_alias(query_lower)
 
         elif 'playlist' in query and "spotify" in query:
             try:
@@ -185,16 +194,13 @@ async def move(ctx, from_position: int, to_position: int = 1):
         await ctx.send("Invalid position. Please check the queue and try again.")
 
 
-@bot.command(name="die", help='Terminates the bot')
+@bot.command(name="die", help='Terminates the bot ()')
 async def die(ctx):
     if str(ctx.author.id) == os.getenv("DISCORD_LUTTU_TOKEN"):
         await ctx.send("Hörs på byn.")
         await bot.close()
     else:
         await ctx.send("You lack permission, try -leave instead if you want me gone.")
-
-
-
 
 
 @bot.command(name="topsongs", help="Prints top 10 requested songs")

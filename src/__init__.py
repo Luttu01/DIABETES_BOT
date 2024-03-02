@@ -5,7 +5,6 @@ import os
 import json
 import subprocess
 import datetime
-import rapidfuzz
 import yt_dlp as youtube_dl
 from .config import *
 from discord.ext import commands, tasks
