@@ -42,7 +42,7 @@ class YTDLSource(discord.PCMVolumeTransformer):
             filename = data['url']
             return self(discord.FFmpegPCMAudio(filename, **ffmpeg_options), data=data)
         else:
-            print(f"downloading audio: {url}")
+            # print(f"downloading audio: {url}")
             data = await loop.run_in_executor(None, lambda: ytdl.extract_info(url, download=True))
             if data is None:
                 return None

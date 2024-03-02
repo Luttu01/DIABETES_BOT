@@ -76,6 +76,8 @@ async def play_next_song(ctx):
                 await ctx.send("Problem with this song, skipping to next one")
                 await play_next_song(ctx)
             ctx.voice_client.play(next_song, after=lambda e: None)  # No after callback
+            global now_playing
+            now_playing = next_song.title
             await ctx.send(f'Now playing: {next_song.title}')
 
 '''
@@ -94,9 +96,10 @@ def get_spotify_playlist_tracks(playlist_url):
     results = sp.playlist_tracks(playlist_url)
     tracks = []
     for item in results['items']:
-        track = item['track']
-        url = track['external_urls']['spotify']
-        tracks.append(url)  
+        track = item.get('track', {})
+        url = track.get('external_urls', {}).get('spotify') 
+        if url: 
+            tracks.append(url)
     return tracks
 
 '''

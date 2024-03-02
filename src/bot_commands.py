@@ -42,13 +42,20 @@ async def play(ctx, query: str, *flags):
     start_time = time.time()
 
     if not assert_url(query) and not assert_alias(query_lower):
-        await ctx.send("Not a valid url.")
-        return
+        best_match, score = rapidfuzz.process.extractOne(query_lower, get_aliases(), scorer=rapidfuzz.fuzz.WRatio)[:2]
+        print(best_match)
+        print(score)
+        if score >= 80:
+            print(f"best alias match: {best_match}")
+            await ctx.send(f"Your query matched {best_match} by {score}%")
+            query = best_match
+        else:
+            await ctx.send("Invalid url.")
+            return
 
     async with ctx.typing():
-        if query_lower in get_aliases():
-            aliases = get_aliases()
-            url = get_url_from_alias(query_lower)
+        if query in get_aliases():
+            url = get_url_from_alias(query)
 
         elif 'playlist' in query and "spotify" in query:
             try:
@@ -70,12 +77,7 @@ async def play(ctx, query: str, *flags):
             url = query
         
         try:
-            if '-d' in flags:
-                if str(ctx.author.id) == os.getenv("DISCORD_LUTTU_TOKEN"):
-                    player = await get_player(ctx, url, stream=False)
-                    await ctx.send("Downloaded audio.")
-            else:
-                player = await get_player(ctx, url)
+            player = await get_player(ctx, url)
 
             if player is None:
                 await ctx.send("Problem downloading the song, assert the url is valid.")
@@ -187,7 +189,7 @@ async def move(ctx, from_position: int, to_position: int = 1):
         queue.insert(to_index, song)
 
         if from_position != to_position:
-            await ctx.send(f"Moved song from position {from_position} to {to_position}.")
+            await ctx.send(f"Moved {queue[from_position].title} from position {from_position} to {to_position}.")
         else:
             await ctx.send(f"Moved song to the front of the queue.")
     else:
