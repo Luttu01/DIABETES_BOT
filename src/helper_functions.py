@@ -29,10 +29,11 @@ async def check_queue(ctx):
         if ctx.voice_client and not ctx.voice_client.is_playing():
             try:
                 ctx.voice_client.play(next_song, after=lambda e: print(f"Error in playback: {e}" if e else "Playback finished."))
-                await ctx.send(f'Now playing: {next_song.title}')
+                await ctx.send(f'--- Now playing: {next_song.title} ---')
                 now_playing = next_song.title
             except Exception as e:
-                await ctx.send(f"Error playing the song: {e}")
+                await ctx.send(f"Error playing the song")
+                print(e)
     # else:
     #     await ctx.send("The queue is empty.")
 

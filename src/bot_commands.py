@@ -32,7 +32,7 @@ async def join(ctx):
         play_next_song.start(ctx)
 
 
-@bot.command(name='play', aliases=['p', "pl", "pla"], help='Plays a given url')
+@bot.command(name='play', aliases=['p', "pl", "pla", "spela"], help='Plays a given url')
 @is_author_in_voice_channel()
 async def play(ctx, query: str, *flags):
     if not ctx.voice_client:
@@ -59,6 +59,7 @@ async def play(ctx, query: str, *flags):
 
         elif 'playlist' in query and "spotify" in query:
             try:
+                await ctx.send("Processing playlist")
                 await process_spotify_playlist(ctx, query)
                 return
             except youtube_dl.DownloadError as e:
@@ -67,6 +68,7 @@ async def play(ctx, query: str, *flags):
         
         elif 'playlist' in query and "youtube" in query:
             try:
+                await ctx.send("Processing playlist")
                 await process_yt_playlist(ctx, query)
                 return
             except youtube_dl.DownloadError as e:
@@ -87,22 +89,24 @@ async def play(ctx, query: str, *flags):
                 await ctx.send(f'Added to queue: {player.title}, at position {len(queue)}')
             else:
                 ctx.voice_client.play(player, after=lambda e: None)
-                await ctx.send(f'Now playing: {player.title}')
+                await ctx.send(f'--- Now playing: {player.title} ---')
                 global now_playing
                 now_playing = player.title
                 print(f"np is now: {now_playing}")
-            
-            if '-t' not in flags:
-                print("updating counters.")
-                update_url_counter(url, player.title)
-                update_request_counter(ctx.author.name)
-            
-            print(f"time: {time.time() - start_time}")
-            
+
         except youtube_dl.DownloadError as e:
             await ctx.send("There was an error processing your request. Please try a different URL or check the URL format.")
             print(e)
 
+            
+        if '-t' not in flags:
+            print("updating counters.")
+            update_url_counter(url, player.title)
+            update_request_counter(ctx.author.name)
+        
+        print(f"time: {time.time() - start_time}")
+            
+        
 
 @bot.command(name='skip', aliases=["s", "sk", "ski"], help='Skips the currently playing song')
 @is_author_in_voice_channel()
@@ -129,7 +133,7 @@ async def leave(ctx):
         await ctx.send("The bot is not connected to a voice channel.")
 
 
-@bot.command(name='shuffle', aliases=["sh", "shu", "shuf", "shuff", "shuffl"], help='Shuffles the current playlist')
+@bot.command(name='shuffle', aliases=["sh", "shu", "shuf", "shuff", "shuffl", "blanda"], help='Shuffles the current playlist')
 @is_author_in_voice_channel()
 async def shuffle(ctx):
     if len(queue) > 1:
@@ -221,7 +225,7 @@ async def topsongs(ctx):
         await ctx.send("An error occurred while fetching the top songs.")
 
 
-@bot.command(name="alias", help="Sets given url to given alias")
+@bot.command(name="alias", help="Sets given URL to given alias")
 @is_author_in_voice_channel()
 async def alias(ctx, url, new_alias):
     if not assert_url(url):
