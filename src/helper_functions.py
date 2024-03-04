@@ -164,6 +164,17 @@ def add_alias(url, new_name):
     except (FileNotFoundError, json.JSONDecodeError) as e:
         print(e)
 
+def spoof_user(username, id):
+    try:
+        with open(rf'{jsons_path}\author_id.json', 'r') as read_file:
+            open_json = json.load(read_file)
+        open_json[username] = id
+        with open(rf'{jsons_path}\author_id.json', 'w') as write_file:
+            json.dump(open_json, write_file, indent=4)
+    except (FileNotFoundError, json.JSONDecodeError) as e:
+        print(e)
+
+
 '''
 Remove given alias from ./aliases.json
 Used in @./bot_commands.rmalias function
@@ -267,6 +278,11 @@ def assert_alias(alias):
 
 def get_cached_urls():
     with open(rf'{jsons_path}\cache.json', 'r') as read_file:
+        caches = json.load(read_file)
+        return list(caches.keys())
+
+def get_spoofed_users():
+    with open(rf'{jsons_path}\author_id.json', 'r') as read_file:
         caches = json.load(read_file)
         return list(caches.keys())
 

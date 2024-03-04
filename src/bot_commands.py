@@ -37,6 +37,9 @@ async def join(ctx):
 async def play(ctx, query: str, *flags):
     if not ctx.voice_client:
         await join(ctx)
+
+    if ctx.author.name not in get_spoofed_users():
+        spoof_user(ctx.author.name, ctx.author.id)
     
     query_lower = query.lower()
     start_time = time.time()
