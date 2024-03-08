@@ -79,7 +79,7 @@ async def play_next_song(ctx):
             ctx.voice_client.play(next_song, after=lambda e: None)  # No after callback
             global now_playing
             now_playing = next_song.title
-            await ctx.send(f'Now playing: {next_song.title}')
+            await ctx.send(f'--- Now playing: {next_song.title} ---')
 
 '''
 Helper for @play_next_song function
@@ -167,10 +167,17 @@ def add_alias(url, new_name):
 def spoof_user(username, id):
     try:
         with open(rf'{jsons_path}\author_id.json', 'r') as read_file:
-            open_json = json.load(read_file)
-        open_json[username] = id
+            author_ids = json.load(read_file)
+        
+        if id in author_ids.values():
+            for username, current_id in author_ids.items():
+                if current_id == id:
+                    author_ids[username] == id
+        else:
+            author_ids[username] = id
+        
         with open(rf'{jsons_path}\author_id.json', 'w') as write_file:
-            json.dump(open_json, write_file, indent=4)
+            json.dump(author_ids, write_file, indent=4)
     except (FileNotFoundError, json.JSONDecodeError) as e:
         print(e)
 

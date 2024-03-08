@@ -62,7 +62,7 @@ async def play(ctx, query: str, *flags):
 
         elif 'playlist' in query and "spotify" in query:
             try:
-                await ctx.send("Processing playlist")
+                await ctx.send("Processing playlist, you can queue other songs meanwhile.")
                 await process_spotify_playlist(ctx, query)
                 return
             except youtube_dl.DownloadError as e:
@@ -71,7 +71,7 @@ async def play(ctx, query: str, *flags):
         
         elif 'playlist' in query and "youtube" in query:
             try:
-                await ctx.send("Processing playlist")
+                await ctx.send("Processing playlist, you can queue other songs meanwhile.")
                 await process_yt_playlist(ctx, query)
                 return
             except youtube_dl.DownloadError as e:
@@ -89,7 +89,7 @@ async def play(ctx, query: str, *flags):
                 return
             if ctx.voice_client.is_playing() or ctx.voice_client.is_paused():
                 queue.append(player)
-                await ctx.send(f'Added to queue: {player.title}, at position {len(queue)}')
+                await ctx.send(f'**Added to queue: {player.title}, at position {len(queue)}**')
             else:
                 ctx.voice_client.play(player, after=lambda e: None)
                 await ctx.send(f'--- Now playing: {player.title} ---')
@@ -111,7 +111,7 @@ async def play(ctx, query: str, *flags):
             
         
 
-@bot.command(name='skip', aliases=["s", "sk", "ski"], help='Skips the currently playing song')
+@bot.command(name='skip', aliases=["s", "sk", "ski", "nästa"], help='Skips the currently playing song')
 @is_author_in_voice_channel()
 async def skip(ctx):
     if not ctx.voice_client or not ctx.voice_client.is_playing():
@@ -119,6 +119,7 @@ async def skip(ctx):
         return
 
     ctx.voice_client.stop()
+    global now_playing
     await ctx.send(f"Skipped the song: {now_playing}.")
 
     await check_queue(ctx)
