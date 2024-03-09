@@ -10,7 +10,6 @@ def is_author_in_voice_channel():
     def decorator(func):
         @wraps(func)
         async def wrapper(ctx, *args, **kwargs):
-            # Check if the user is not connected to any voice channel
             if not ctx.author.voice:
                 await ctx.send("You are not connected to a voice channel.")
                 return
@@ -30,12 +29,10 @@ async def check_queue(ctx):
             try:
                 ctx.voice_client.play(next_song, after=lambda e: print(f"Error in playback: {e}" if e else "Playback finished."))
                 await ctx.send(f'--- Now playing: {next_song.title} ---')
-                now_playing = next_song.title
+                set_np(next_song.title)
             except Exception as e:
                 await ctx.send(f"Error playing the song")
                 print(e)
-    # else:
-    #     await ctx.send("The queue is empty.")
 
 '''
 Helper function for @get_youtube_link
@@ -56,7 +53,6 @@ Extract youtube link,
 using information from given @spotify_url
 '''
 async def get_youtube_link(spotify_url):
-    # Extract track info from Spotify URL
     track_info = sp.track(spotify_url)
     track_name = track_info['name']
     artist_name = track_info['artists'][0]['name']
@@ -77,9 +73,8 @@ async def play_next_song(ctx):
                 await ctx.send("Problem with this song, skipping to next one")
                 await play_next_song(ctx)
             ctx.voice_client.play(next_song, after=lambda e: None)  # No after callback
-            global now_playing
-            now_playing = next_song.title
-            await ctx.send(f'--- Now playing: {next_song.title} ---')
+            set_np(next_song.title)
+            await ctx.send(f'--- Now playing: {get_np()} ---')
 
 '''
 Helper for @play_next_song function
@@ -235,24 +230,33 @@ async def fetch_top_songs(ctx):
             return []
     
 
-async def get_player(ctx, url, stream=False):
-    async with ctx.typing():
-        spotify_url = ""
-        if "spotify" in url:
-            parsed_url = urlparse(url)
-            spotify_url = f"{parsed_url.scheme}://{parsed_url.netloc}{parsed_url.path}"
-            if spotify_url not in get_cached_urls():
-                try:        
-                    url = await get_youtube_link(url)
-                    player = await YTDLSource.from_url(url, loop=bot.loop, stream=stream, spotify_url=spotify_url)
-                except youtube_dl.DownloadError as e:
-                    await ctx.send("There was an error processing your request. Please try a different URL or check the URL format.")
-                    print(e)
-            else:
-                player = await YTDLSource.from_url(spotify_url, loop=bot.loop, stream=stream)
+async def get_player(url, stream=False):
+    parsed_url = urlparse(url)
+    base_url = f"{parsed_url.scheme}://{parsed_url.netloc}{parsed_url.path}"
+
+    if "spotify" in url:
+        if base_url not in get_cached_urls():
+            try:
+                url = await get_youtube_link(url)
+                player = await YTDLSource.from_url(url, loop=bot.loop, stream=stream, spotify_url=base_url)
+            except youtube_dl.DownloadError as e:
+                print(e)
+                return None
+        else:
+            player = await YTDLSource.from_url(base_url, loop=bot.loop, stream=stream)
+    elif "youtube" in url or "youtu.be" in url:
+        query_params = parse_qs(parsed_url.query)
+        if 'v' in query_params:
+            new_query = f"v={query_params['v'][0]}"
+            cleaned_url = urlunparse(parsed_url._replace(query=new_query))
+            print(cleaned_url)
+            player = await YTDLSource.from_url(cleaned_url, loop=bot.loop, stream=stream)
         else:
             player = await YTDLSource.from_url(url, loop=bot.loop, stream=stream)
-        return player
+    else:
+        player = await YTDLSource.from_url(url, loop=bot.loop, stream=stream)
+
+    return player
     
 def assert_url(url):
     return "spotify" in url or "youtube" in url or "soundcloud" in url
@@ -331,39 +335,40 @@ def _extract_playlist_id(url):
     return playlist_id
 
 
-async def process_yt_playlist(ctx, query):
+async def process_yt_playlist(query):
     try:
-        tracks = get_youtube_playlist_urls(query)
-        to_append = []
+        tracks        = get_youtube_playlist_urls(query)
+        playlist_name = get_yt_playlist_name(query)
+        to_append     = []
+        failures      = 0
         for url in tracks:
-            player = await get_player(ctx, url, stream=True)
+            player = await get_player(url, stream=True)
             if player is None:
-                await ctx.send("Problem processing a song, moving on to the next one.")
+                failures += 1
                 continue
             to_append.append(player)
         global queue
         queue += to_append
-        await ctx.send(f"Added '{get_yt_playlist_name(query)}' to the queue.")
-        return
+        return (playlist_name, failures)
     except youtube_dl.DownloadError as e:
-        await ctx.send("There was an error processing your request. Please try a different URL or check the URL format.")
         print(e)
+        return None
 
-async def process_spotify_playlist(ctx, query):
+async def process_spotify_playlist(query):
     tracks        = get_spotify_playlist_tracks(query)
     playlist_name = get_spotify_playlist_name(query)
     to_append     = []
+    failures      = 0
     for track in tracks:
         url    = await get_youtube_link(track)
-        player = await get_player(ctx, url, stream=True)
+        player = await get_player(url, stream=True)
         if player is None:
-            await ctx.send("Problem processing a song, moving on to the next one.")
+            failures += 1
             continue
         to_append.append(player)
     global queue    
     queue += to_append
-    await ctx.send(f"added to queue: {playlist_name}")
-    return
+    return (playlist_name, failures)
 
 
 def sort_cache():
@@ -377,7 +382,7 @@ def sort_cache():
             date_to_check = datetime.datetime.strptime(data[cached_url][LAST_ACCESSED], '%Y-%m-%d')
             current_date = datetime.datetime.now()
             delta_time = current_date - date_to_check
-            if delta_time > datetime.timedelta(weeks=12):
+            if delta_time > datetime.timedelta(weeks=24):
                 keys_to_delete.append(cached_url)
 
         for key in keys_to_delete:
@@ -389,3 +394,12 @@ def sort_cache():
 
     except json.JSONDecodeError:
         print("Error decoding JSON.")
+
+
+def set_np(title):
+    global now_playing
+    now_playing = title
+
+def get_np():
+    global now_playing
+    return now_playing

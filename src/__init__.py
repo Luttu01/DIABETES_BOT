@@ -5,13 +5,15 @@ import os
 import json
 import subprocess
 import datetime
+import logging
 import yt_dlp as youtube_dl
 from .config import *
+from pathlib import Path
 from discord.ext import commands, tasks
 from spotipy.oauth2 import SpotifyClientCredentials
 from dotenv import load_dotenv
 from googleapiclient.discovery import build
-from urllib.parse import urlparse, parse_qs
+from urllib.parse import urlparse, parse_qs, urlunparse
 
 load_dotenv(dotenv_path= r"C:\Users\absol\Desktop\python\DIABETESBOT\res\.env")
 
@@ -21,7 +23,7 @@ sp = spotipy.Spotify(auth_manager=SpotifyClientCredentials(client_id=os.getenv('
 
 queue = []
 top_songs = []
-now_playing = ""
+now_playing = None
 
 class YTDLSource(discord.PCMVolumeTransformer):
     def __init__(self, source, *, data, volume=0.5):
@@ -42,7 +44,6 @@ class YTDLSource(discord.PCMVolumeTransformer):
             filename = data['url']
             return self(discord.FFmpegPCMAudio(filename, **ffmpeg_options), data=data)
         else:
-            # print(f"downloading audio: {url}")
             data = await loop.run_in_executor(None, lambda: ytdl.extract_info(url, download=True))
             if data is None:
                 return None

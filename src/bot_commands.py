@@ -50,7 +50,7 @@ async def play(ctx, query: str, *flags):
         print(score)
         if score >= 80:
             print(f"best alias match: {best_match}")
-            await ctx.send(f"Your query matched {best_match} by {score}%")
+            await ctx.send(f"Your query matched '{best_match}' by {score}%")
             query = best_match
         else:
             await ctx.send("Invalid url.")
@@ -63,7 +63,8 @@ async def play(ctx, query: str, *flags):
         elif 'playlist' in query and "spotify" in query:
             try:
                 await ctx.send("Processing playlist, you can queue other songs meanwhile.")
-                await process_spotify_playlist(ctx, query)
+                playlist_name, failures = await process_spotify_playlist(query)
+                await ctx.send(f"**Added {playlist_name!r} to the queue. Failed to load {failures} songs.**")
                 return
             except youtube_dl.DownloadError as e:
                 await ctx.send("There was an error processing your request. Please try a different URL or check the URL format.")
@@ -72,7 +73,8 @@ async def play(ctx, query: str, *flags):
         elif 'playlist' in query and "youtube" in query:
             try:
                 await ctx.send("Processing playlist, you can queue other songs meanwhile.")
-                await process_yt_playlist(ctx, query)
+                playlist_name, failures = await process_yt_playlist(query)
+                await ctx.send(f"**Added {playlist_name!r} to the queue. Failed to load {failures} songs.**")
                 return
             except youtube_dl.DownloadError as e:
                 await ctx.send("There was an error processing your request. Please try a different URL or check the URL format.")
@@ -82,20 +84,19 @@ async def play(ctx, query: str, *flags):
             url = query
         
         try:
-            player = await get_player(ctx, url)
+            player = await get_player(url)
 
             if player is None:
                 await ctx.send("Problem downloading the song, assert the url is valid.")
                 return
             if ctx.voice_client.is_playing() or ctx.voice_client.is_paused():
                 queue.append(player)
-                await ctx.send(f'**Added to queue: {player.title}, at position {len(queue)}**')
+                await ctx.send(f'**Added to queue: {player.title!r}, at position {len(queue)}**')
             else:
                 ctx.voice_client.play(player, after=lambda e: None)
-                await ctx.send(f'--- Now playing: {player.title} ---')
-                global now_playing
-                now_playing = player.title
-                print(f"np is now: {now_playing}")
+                await ctx.send(f'--- Now playing: {player.title!r} ---')
+                set_np(player.title)
+                print(f"np is now: {get_np()}")
 
         except youtube_dl.DownloadError as e:
             await ctx.send("There was an error processing your request. Please try a different URL or check the URL format.")
@@ -119,8 +120,7 @@ async def skip(ctx):
         return
 
     ctx.voice_client.stop()
-    global now_playing
-    await ctx.send(f"Skipped the song: {now_playing}.")
+    await ctx.send(f"Skipped the song: {get_np()}.")
 
     await check_queue(ctx)
 
@@ -301,7 +301,7 @@ async def aliases(ctx):
 @is_author_in_voice_channel()
 async def nowplaying(ctx):
     if ctx.voice_client.is_playing():
-        if now_playing:
-            await ctx.send(f"Currently playing: {now_playing}.")
+        if get_np():
+            await ctx.send(f"Currently playing: {get_np()}.")
     else:
         await ctx.send("Not playing anything right now.")
