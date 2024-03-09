@@ -8,7 +8,7 @@ import datetime
 import logging
 import yt_dlp as youtube_dl
 from .config import *
-from pathlib import Path
+# from pathlib import Path
 from discord.ext import commands, tasks
 from spotipy.oauth2 import SpotifyClientCredentials
 from dotenv import load_dotenv

@@ -1,4 +1,4 @@
-from . import discord, os, Path
+from . import discord, os
 
 jsons_path = r'C:\Users\absol\Desktop\python\DIABETESBOT\res'
 cache_path = r'C:\Users\absol\Desktop\python\DIABETESBOT\cache'
@@ -36,4 +36,4 @@ intents.guilds = True
 intents.voice_states = True
 intents.message_content = True
 
-log_file_path = Path(r"C:\Users\absol\Desktop\python\DIABETESBOT\logs\bot.log")
+# log_file_path = Path(r"C:\Users\absol\Desktop\python\DIABETESBOT\logs\bot.log")
