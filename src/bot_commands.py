@@ -42,7 +42,7 @@ async def play(ctx, query: str, *flags):
         spoof_user(ctx.author.name, ctx.author.id)
     
     query_lower = query.lower()
-    start_time = time.time()
+    start_time  = time.time()
 
     if not assert_url(query) and not assert_alias(query_lower):
         best_match, score = rapidfuzz.process.extractOne(query_lower, get_aliases(), scorer=rapidfuzz.fuzz.WRatio)[:2]
@@ -94,7 +94,7 @@ async def play(ctx, query: str, *flags):
                 await ctx.send(f'**Added to queue: {player.title!r}, at position {len(queue)}**')
             else:
                 ctx.voice_client.play(player, after=lambda e: None)
-                await ctx.send(f'--- Now playing: {player.title!r} ---')
+                await ctx.send(f'--- Now playing: {player.title} ---')
                 set_np(player.title)
                 print(f"np is now: {get_np()}")
 
@@ -125,7 +125,7 @@ async def skip(ctx):
     await check_queue(ctx)
 
 
-@bot.command(name='leave', help='To make the bot leave the voice channel')
+@bot.command(name='leave', aliases="lämna", help='To make the bot leave the voice channel')
 @is_author_in_voice_channel()
 async def leave(ctx):
     voice_client = ctx.message.guild.voice_client
@@ -197,7 +197,7 @@ async def move(ctx, from_position: int, to_position: int = 1):
         queue.insert(to_index, song)
 
         if from_position != to_position:
-            await ctx.send(f"Moved {queue[from_position].title} from position {from_position} to {to_position}.")
+            await ctx.send(f"Moved {queue[from_index].title} from position {from_position} to {to_position}.")
         else:
             await ctx.send(f"Moved song to the front of the queue.")
     else:
