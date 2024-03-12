@@ -125,7 +125,7 @@ async def skip(ctx):
     await check_queue(ctx)
 
 
-@bot.command(name='leave', aliases="lämna", help='To make the bot leave the voice channel')
+@bot.command(name='leave', aliases=["lämna"], help='To make the bot leave the voice channel')
 @is_author_in_voice_channel()
 async def leave(ctx):
     voice_client = ctx.message.guild.voice_client
@@ -165,7 +165,7 @@ async def remove(ctx, position: int = 1):
         await ctx.send("The queue is currently empty.")
 
 
-@bot.command(name='queue', aliases=['q', "qu", "que", "queu"], help='Displays the next 5 songs in the queue')
+@bot.command(name='queue', aliases=['q', "qu", "que", "queu", "kö"], help='Displays the next 5 songs in the queue')
 @is_author_in_voice_channel()
 async def show_queue(ctx):
     if len(queue) == 0:
@@ -181,7 +181,7 @@ async def show_queue(ctx):
     await ctx.send(message)
 
 
-@bot.command(name='move', aliases=["m", "mo", "mov"], help='Move a song in the queue to a new position')
+@bot.command(name='move', aliases=["m", "mo", "mov", "flytta"], help='Move a song in the queue to a new position')
 @is_author_in_voice_channel()
 async def move(ctx, from_position: int, to_position: int = 1):
     if len(queue) >= from_position > 0:
