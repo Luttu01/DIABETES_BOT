@@ -65,6 +65,7 @@ async def play(ctx, query: str, *flags):
                 await ctx.send("Processing playlist, you can queue other songs meanwhile.")
                 playlist_name, failures = await process_spotify_playlist(query)
                 await ctx.send(f"**Added {playlist_name!r} to the queue. Failed to load {failures} songs.**")
+                print(f"time: {time.time() - start_time}")
                 return
             except youtube_dl.DownloadError as e:
                 await ctx.send("There was an error processing your request. Please try a different URL or check the URL format.")
@@ -75,6 +76,7 @@ async def play(ctx, query: str, *flags):
                 await ctx.send("Processing playlist, you can queue other songs meanwhile.")
                 playlist_name, failures = await process_yt_playlist(query)
                 await ctx.send(f"**Added {playlist_name!r} to the queue. Failed to load {failures} songs.**")
+                print(f"time: {time.time() - start_time}")
                 return
             except youtube_dl.DownloadError as e:
                 await ctx.send("There was an error processing your request. Please try a different URL or check the URL format.")
