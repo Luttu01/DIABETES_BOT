@@ -6,6 +6,7 @@ import json
 import subprocess
 import datetime
 import logging
+import random
 import yt_dlp as youtube_dl
 from .config import *
 # from pathlib import Path

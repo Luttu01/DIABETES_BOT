@@ -347,8 +347,9 @@ async def process_yt_playlist(query):
                 failures += 1
                 continue
             to_append.append(player)
-        global queue
-        queue += to_append
+        # global queue
+        # queue += to_append
+        add_to_q(to_append)
         return (playlist_name, failures)
     except youtube_dl.DownloadError as e:
         print(e)
@@ -366,8 +367,7 @@ async def process_spotify_playlist(query):
             failures += 1
             continue
         to_append.append(player)
-    global queue    
-    queue += to_append
+    add_to_q(to_append)
     return (playlist_name, failures)
 
 
@@ -400,6 +400,31 @@ def set_np(title):
     global now_playing
     now_playing = title
 
+
 def get_np():
     global now_playing
     return now_playing
+
+
+def add_to_q(what):
+    global queue
+    try:
+        if type(what) == list:
+            queue.extend(what)
+            return True
+        else:
+            queue.append(what)
+            return True    
+    except Exception:
+        return False
+    
+
+def get_random_cached_url():
+    cached_urls = get_cached_urls()
+    random_int = random.randint(0, len(cached_urls))
+    counter = 0
+    for url in cached_urls:
+        if counter >= random_int:
+            return url
+        counter += 1
+    

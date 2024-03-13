@@ -4,6 +4,7 @@ jsons_path = r'C:\Users\absol\Desktop\python\DIABETESBOT\res'
 cache_path = r'C:\Users\absol\Desktop\python\DIABETESBOT\cache'
 json_cache_file = os.path.join(cache_path, r'C:\Users\absol\Desktop\python\DIABETESBOT\res\cache.json')
 
+# Constants for cache.json
 PATH = 0
 TITLE = 1
 LAST_ACCESSED = 2

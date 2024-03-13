@@ -1,4 +1,3 @@
-import random
 import time
 import rapidfuzz
 from .helper_functions import *
@@ -92,7 +91,8 @@ async def play(ctx, query: str, *flags):
                 await ctx.send("Problem downloading the song, assert the url is valid.")
                 return
             if ctx.voice_client.is_playing() or ctx.voice_client.is_paused():
-                queue.append(player)
+                # queue.append(player)
+                add_to_q(player)
                 await ctx.send(f'**Added to queue: {player.title!r}, at position {len(queue)}**')
             else:
                 ctx.voice_client.play(player, after=lambda e: None)
@@ -240,6 +240,9 @@ async def alias(ctx, url, new_alias):
     if assert_alias(new_alias):
         await ctx.send("That alias already exists.")
         return
+    if url in get_alias_urls():
+        await ctx.send(f"That song already has the alias: {get_alias_from_url(url)}")
+        return
     success = add_alias(url, new_alias)
     if success:
         await ctx.send(f"Successfully added alias: {new_alias}")
@@ -303,7 +306,14 @@ async def aliases(ctx):
 @is_author_in_voice_channel()
 async def nowplaying(ctx):
     if ctx.voice_client.is_playing():
-        if get_np():
-            await ctx.send(f"Currently playing: {get_np()}.")
+        if (np := get_np()):
+            await ctx.send(f"Currently playing: {np}.")
     else:
         await ctx.send("Not playing anything right now.")
+
+
+@bot.command(name="random", aliases=["r", "ra", "ran", "rand", "rando", "slumpa"], help="Play a randomly selected song that has been requested within the last 6 months.")
+@is_author_in_voice_channel()
+async def play_random(ctx):
+    await play(ctx, get_random_cached_url(), "-t")
+
