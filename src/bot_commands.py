@@ -314,6 +314,6 @@ async def nowplaying(ctx):
 
 @bot.command(name="random", aliases=["r", "ra", "ran", "rand", "rando", "slumpa"], help="Play a randomly selected song that has been requested within the last 6 months.")
 @is_author_in_voice_channel()
-async def play_random(ctx):
+async def play_random(ctx, n = 0):
     await play(ctx, get_random_cached_url(), "-t")
 
