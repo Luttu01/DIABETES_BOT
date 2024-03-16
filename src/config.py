@@ -1,8 +1,14 @@
 from . import discord, os
+import logging
 
+# Paths
 jsons_path = r'C:\Users\absol\Desktop\python\DIABETESBOT\res'
 cache_path = r'C:\Users\absol\Desktop\python\DIABETESBOT\cache'
 json_cache_file = os.path.join(cache_path, r'C:\Users\absol\Desktop\python\DIABETESBOT\res\cache.json')
+log_file_path = r"C:\Users\absol\Desktop\python\DIABETESBOT\logs\bot.log"
+
+# Logging
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s', filename=log_file_path)
 
 # Constants for cache.json
 PATH = 0
@@ -36,5 +42,3 @@ intents = discord.Intents.default()
 intents.guilds = True
 intents.voice_states = True
 intents.message_content = True
-
-# log_file_path = Path(r"C:\Users\absol\Desktop\python\DIABETESBOT\logs\bot.log")

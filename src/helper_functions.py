@@ -29,6 +29,7 @@ async def check_queue(ctx):
             try:
                 ctx.voice_client.play(next_song, after=lambda e: print(f"Error in playback: {e}" if e else "Playback finished."))
                 await ctx.send(f'--- Now playing: {next_song.title} ---')
+                set_current_player(next_song)
                 set_np(next_song.title)
             except Exception as e:
                 await ctx.send(f"Error playing the song")
@@ -73,6 +74,7 @@ async def play_next_song(ctx):
                 await ctx.send("Problem with this song, skipping to next one")
                 await play_next_song(ctx)
             ctx.voice_client.play(next_song, after=lambda e: None)  # No after callback
+            set_current_player(next_song)
             set_np(next_song.title)
             await ctx.send(f'--- Now playing: {get_np()} ---')
 
@@ -237,6 +239,7 @@ async def get_player(url, stream=False):
     if "spotify" in url:
         if base_url not in get_cached_urls():
             try:
+                # print(sp.track(base_url))
                 url = await get_youtube_link(url)
                 player = await YTDLSource.from_url(url, loop=bot.loop, stream=stream, spotify_url=base_url)
             except youtube_dl.DownloadError as e:
@@ -347,8 +350,6 @@ async def process_yt_playlist(query):
                 failures += 1
                 continue
             to_append.append(player)
-        # global queue
-        # queue += to_append
         add_to_q(to_append)
         return (playlist_name, failures)
     except youtube_dl.DownloadError as e:
@@ -405,6 +406,19 @@ def get_np():
     global now_playing
     return now_playing
 
+def set_current_player(player):
+    global current_player
+    current_player = player
+
+
+def get_current_player_title():
+    global current_player
+    return current_player.title
+
+def get_current_player_url():
+    global current_player
+    return current_player.url
+
 
 def add_to_q(what):
     global queue
@@ -420,11 +434,5 @@ def add_to_q(what):
     
 
 def get_random_cached_url():
-    cached_urls = get_cached_urls()
-    random_int = random.randint(0, len(cached_urls))
-    counter = 0
-    for url in cached_urls:
-        if counter >= random_int:
-            return url
-        counter += 1
+    return random.choice(get_cached_urls())
     

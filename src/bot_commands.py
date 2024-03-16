@@ -5,18 +5,25 @@ from .helper_functions import *
 
 @bot.event
 async def on_ready():
+    logging.info('Starting bot...')
+
+    logging.debug('Sorting cache.')
     cache_start_time = time.time()
     print("sorting cache", end="", flush=True)
     sort_cache()
     print(f"\rsorting cache took: {time.time()-cache_start_time} seconds", flush=True)
+    logging.debug('Finished sorting cache.')
 
+    logging.debug('Sorting url counter.')
     counter_start_time = time.time()
     print("sorting counter", end="", flush=True)
     sort_counter()
     print(f"\rsorting counters took: {time.time()-counter_start_time} seconds", flush=True )
-    
+    logging.debug('Finished sorting url counter.')
+
     print(f'Logged in as {bot.user.name}')
 
+    logging.info('Bot launched.')
 
 @bot.command(name='join', help='Tells the bot to join the voice channel')
 async def join(ctx):
@@ -31,9 +38,15 @@ async def join(ctx):
         play_next_song.start(ctx)
 
 
-@bot.command(name='play', aliases=['p', "pl", "pla", "spela"], help='Plays a given url')
+@bot.command(name='play', aliases=['p', "pl", "pla", "spela"], help='Plays a given url (youtube, spotify, soundcloud)')
 @is_author_in_voice_channel()
 async def play(ctx, query: str, *flags):
+    try:
+        assert ctx != None
+    except AssertionError:
+        print("Context is none, aborting play request\n"*10)
+        return
+
     if not ctx.voice_client:
         await join(ctx)
 
@@ -91,12 +104,13 @@ async def play(ctx, query: str, *flags):
                 await ctx.send("Problem downloading the song, assert the url is valid.")
                 return
             if ctx.voice_client.is_playing() or ctx.voice_client.is_paused():
-                # queue.append(player)
                 add_to_q(player)
                 await ctx.send(f'**Added to queue: {player.title!r}, at position {len(queue)}**')
             else:
                 ctx.voice_client.play(player, after=lambda e: None)
                 await ctx.send(f'--- Now playing: {player.title} ---')
+                
+                set_current_player(player)
                 set_np(player.title)
                 print(f"np is now: {get_np()}")
 
@@ -234,6 +248,12 @@ async def topsongs(ctx):
 @bot.command(name="alias", help="Sets given URL to given alias")
 @is_author_in_voice_channel()
 async def alias(ctx, url, new_alias):
+    if url == 'np':
+        if (np_url := get_current_player_url()):
+            await alias(ctx, np_url, new_alias)
+        else:
+            await ctx.send("Nothing valid is playing to add as alias right now.")
+        return
     if not assert_url(url):
         await ctx.send("Invalid url; make sure to send a valid youtube, spotify, or soundcloud link.")
         return
@@ -306,7 +326,7 @@ async def aliases(ctx):
 @is_author_in_voice_channel()
 async def nowplaying(ctx):
     if ctx.voice_client.is_playing():
-        if (np := get_np()):
+        if (np := get_current_player_title()):
             await ctx.send(f"Currently playing: {np}.")
     else:
         await ctx.send("Not playing anything right now.")
@@ -314,6 +334,7 @@ async def nowplaying(ctx):
 
 @bot.command(name="random", aliases=["r", "ra", "ran", "rand", "rando", "slumpa"], help="Play a randomly selected song that has been requested within the last 6 months.")
 @is_author_in_voice_channel()
-async def play_random(ctx, n = 0):
-    await play(ctx, get_random_cached_url(), "-t")
+async def play_random(ctx, n = 1):
+    for _ in range(n):
+        await play(ctx, get_random_cached_url(), "-t")
 
