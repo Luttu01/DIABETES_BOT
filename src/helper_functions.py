@@ -372,6 +372,44 @@ async def process_spotify_playlist(query):
     return (playlist_name, failures)
 
 
+def get_spotify_album_name(url):
+    try:
+        album_details = sp.album(url)
+        album_name = album_details['name']
+        return album_name
+    except spotipy.exceptions.SpotifyException as e:
+        print(f"An error occurred: {e}")
+        return None
+
+
+def get_spotify_album_tracks(url):
+    results = sp.album_tracks(url)
+    tracks = []
+    for item in results['items']:
+        url = item.get('external_urls', {}).get('spotify') 
+        if url: 
+            tracks.append(url)
+    return tracks
+
+
+async def process_spotify_album(query):
+    tracks        = get_spotify_album_tracks(query)
+    # print(tracks)
+    album_name = get_spotify_album_name(query)
+    # print(album_name)
+    to_append     = []
+    failures      = 0
+    for track in tracks:
+        url    = await get_youtube_link(track)
+        player = await get_player(url, stream=True)
+        if player is None:
+            failures += 1
+            continue
+        to_append.append(player)
+    add_to_q(to_append)
+    return (album_name, failures)
+
+
 def sort_cache():
     try:
         cache_path = os.path.join(jsons_path, 'cache.json')
@@ -435,4 +473,8 @@ def add_to_q(what):
 
 def get_random_cached_url():
     return random.choice(get_cached_urls())
-    
+
+
+def clear_logs():
+    with open(log_file_path, 'w'):
+        pass

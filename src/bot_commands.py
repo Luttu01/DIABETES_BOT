@@ -5,6 +5,8 @@ from .helper_functions import *
 
 @bot.event
 async def on_ready():
+    clear_logs()
+
     logging.info('Starting bot...')
 
     logging.debug('Sorting cache.')
@@ -82,6 +84,13 @@ async def play(ctx, query: str, *flags):
             except youtube_dl.DownloadError as e:
                 await ctx.send("There was an error processing your request. Please try a different URL or check the URL format.")
                 print(e)
+
+        elif 'album' in query and 'spotify' in query:
+            await ctx.send("Processing album, you can queue other songs meanwhile.")
+            album_name, failures = await process_spotify_album(query)
+            await ctx.send(f"**Added {album_name!r} to the queue. Failed to load {failures} songs.**")
+            print(f"time: {time.time() - start_time}")
+            return
         
         elif 'playlist' in query and "youtube" in query:
             try:
@@ -213,7 +222,7 @@ async def move(ctx, from_position: int, to_position: int = 1):
         queue.insert(to_index, song)
 
         if from_position != to_position:
-            await ctx.send(f"Moved {queue[from_index].title} from position {from_position} to {to_position}.")
+            await ctx.send(f"Moved {song.title} from position {from_position} to {to_position}.")
         else:
             await ctx.send(f"Moved song to the front of the queue.")
     else:
