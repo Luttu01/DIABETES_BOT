@@ -76,7 +76,7 @@ async def play_next_song(ctx):
             ctx.voice_client.play(next_song, after=lambda e: None)  # No after callback
             set_current_player(next_song)
             set_np(next_song.title)
-            await ctx.send(f'--- Now playing: {get_np()} ---')
+            await ctx.send(f'--- Now playing: {next_song.title} ---')
 
 '''
 Helper for @play_next_song function
@@ -239,7 +239,7 @@ async def get_player(url, stream=False):
     if "spotify" in url:
         if base_url not in get_cached_urls():
             try:
-                # print(sp.track(base_url))
+                print(sp.track(base_url))
                 url = await get_youtube_link(url)
                 player = await YTDLSource.from_url(url, loop=bot.loop, stream=stream, spotify_url=base_url)
             except youtube_dl.DownloadError as e:

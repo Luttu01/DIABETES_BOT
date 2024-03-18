@@ -121,7 +121,7 @@ async def play(ctx, query: str, *flags):
                 
                 set_current_player(player)
                 set_np(player.title)
-                print(f"np is now: {get_np()}")
+                print(f"np is now: {player.title}")
 
         except youtube_dl.DownloadError as e:
             await ctx.send("There was an error processing your request. Please try a different URL or check the URL format.")
@@ -130,6 +130,7 @@ async def play(ctx, query: str, *flags):
             
         if '-t' not in flags:
             print("updating counters.")
+            logging.info('Updating counters.')
             update_url_counter(url, player.title)
             update_request_counter(ctx.author.name)
         
