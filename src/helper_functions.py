@@ -418,14 +418,14 @@ def sort_cache():
 
         keys_to_delete = []
         for cached_url in data:
-            date_to_check = datetime.datetime.strptime(data[cached_url][LAST_ACCESSED], '%Y-%m-%d')
+            date_to_check = datetime.datetime.strptime(data[cached_url][last_accessed], '%Y-%m-%d')
             current_date = datetime.datetime.now()
             delta_time = current_date - date_to_check
             if delta_time > datetime.timedelta(weeks=24):
                 keys_to_delete.append(cached_url)
 
         for key in keys_to_delete:
-            os.remove(data[key][PATH])
+            os.remove(data[key][path])
             del data[key]
 
         with open(cache_path, 'w') as write_file:
@@ -478,3 +478,19 @@ def get_random_cached_url():
 def clear_logs():
     with open(log_file_path, 'w'):
         pass
+
+
+def reformat_cache():
+    with open(r'C:\Users\absol\Desktop\python\DIABETESBOT\res\cache_placeholder.json', 'r') as r:
+        cache = json.load(r)
+    
+    new_cache = {}
+    for url, details in cache.items():
+        if isinstance(cache[url], list):
+            new_cache[url] = {
+                "path": details[PATH], #0
+                "title": details[TITLE], #1
+                "last_accessed": details[LAST_ACCESSED] #2
+            }
+    with open(json_cache_file, 'w') as w:
+        json.dump(new_cache, w, indent=4)

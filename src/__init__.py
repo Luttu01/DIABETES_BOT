@@ -25,6 +25,7 @@ queue = []
 top_songs = []
 now_playing = None
 current_player = None
+silence = False
 
 class YTDLSource(discord.PCMVolumeTransformer):
     def __init__(self, source, *, data, url, volume=0.5):
@@ -64,7 +65,7 @@ class YTDLSource(discord.PCMVolumeTransformer):
         except (FileNotFoundError, json.JSONDecodeError):
             cache = {}
         if url in cache.keys():
-            cache[url][LAST_ACCESSED] = datetime.datetime.now().strftime("%Y-%m-%d")
+            cache[url][last_accessed] = datetime.datetime.now().strftime("%Y-%m-%d")
             with open(rf'{jsons_path}\cache.json', "w") as w:
                 json.dump(cache, w, indent=4)
             return (cache[url][PATH], cache[url][TITLE])
@@ -72,13 +73,22 @@ class YTDLSource(discord.PCMVolumeTransformer):
 
     
     @staticmethod
-    async def update_json_cache(url, path, title):
+    async def update_json_cache(self, url, path, title):
         with open(rf'{jsons_path}\cache.json', 'r') as f:
             cache = json.load(f)
-        cache[url] = [path, title, datetime.datetime.now().strftime("%Y-%m-%d")]
+        cache[url] = self._new_cache_entry(path, title, datetime.datetime.now().strftime("%Y-%m-%d"))
 
         with open(rf'{jsons_path}\cache.json', 'w') as f:
             json.dump(cache, f, indent=4)
+    
+    @staticmethod
+    def _new_cache_entry(path, title, last_accessed):
+        return {
+            'path': path,
+            'title': title,
+            'last_accessed': last_accessed
+        }
+
 
 
 from . import bot_commands

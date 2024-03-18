@@ -6,6 +6,7 @@ from .helper_functions import *
 @bot.event
 async def on_ready():
     clear_logs()
+    reformat_cache()
 
     logging.info('Starting bot...')
 
@@ -347,4 +348,5 @@ async def nowplaying(ctx):
 async def play_random(ctx, n = 1):
     for _ in range(n):
         await play(ctx, get_random_cached_url(), "-t")
+
 
