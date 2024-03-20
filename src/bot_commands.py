@@ -5,8 +5,11 @@ from .helper_functions import *
 
 @bot.event
 async def on_ready():
+
     clear_logs()
-    reformat_cache()
+    reset_weighting()
+
+    # reformat_cache()
 
     logging.info('Starting bot...')
 
@@ -346,7 +349,9 @@ async def nowplaying(ctx):
 @bot.command(name="random", aliases=["r", "ra", "ran", "rand", "rando", "slumpa"], help="Play a randomly selected song that has been requested within the last 6 months.")
 @is_author_in_voice_channel()
 async def play_random(ctx, n = 1):
-    for _ in range(n):
-        await play(ctx, get_random_cached_url(), "-t")
+    logging.debug(f'play_random called {n} times.')
+    random_urls = get_random_cached_urls(n)
+    for url in random_urls:
+        await play(ctx, url, "-t")
 
 

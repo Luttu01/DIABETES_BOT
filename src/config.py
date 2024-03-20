@@ -11,9 +11,9 @@ log_file_path = r"C:\Users\absol\Desktop\python\DIABETESBOT\logs\bot.log"
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s', filename=log_file_path)
 
 # Constants for cache.json
-PATH = 0
-TITLE = 1
-LAST_ACCESSED = 2
+# PATH = 0
+# TITLE = 1
+# LAST_ACCESSED = 2
 
 ytdl_format_options = {
     'format': 'bestaudio/best',

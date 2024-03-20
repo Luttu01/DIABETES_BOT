@@ -65,29 +65,29 @@ class YTDLSource(discord.PCMVolumeTransformer):
         except (FileNotFoundError, json.JSONDecodeError):
             cache = {}
         if url in cache.keys():
-            cache[url][last_accessed] = datetime.datetime.now().strftime("%Y-%m-%d")
+            cache[url]['last_accessed'] = datetime.datetime.now().strftime("%Y-%m-%d")
             with open(rf'{jsons_path}\cache.json', "w") as w:
                 json.dump(cache, w, indent=4)
-            return (cache[url][PATH], cache[url][TITLE])
+            return (cache[url]['path'], cache[url]['title'])
         return None
 
-    
     @staticmethod
-    async def update_json_cache(self, url, path, title):
+    async def update_json_cache(url, path, title):
         with open(rf'{jsons_path}\cache.json', 'r') as f:
             cache = json.load(f)
-        cache[url] = self._new_cache_entry(path, title, datetime.datetime.now().strftime("%Y-%m-%d"))
+
+        def _new_cache_entry(path, title, last_accessed):
+            return {
+                'path': path,
+                'title': title,
+                'last_accessed': last_accessed,
+                'weight': 1
+            }
+        cache[url] = _new_cache_entry(path, title, datetime.datetime.now().strftime("%Y-%m-%d"))
 
         with open(rf'{jsons_path}\cache.json', 'w') as f:
             json.dump(cache, f, indent=4)
     
-    @staticmethod
-    def _new_cache_entry(path, title, last_accessed):
-        return {
-            'path': path,
-            'title': title,
-            'last_accessed': last_accessed
-        }
 
 
 

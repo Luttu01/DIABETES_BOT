@@ -394,9 +394,7 @@ def get_spotify_album_tracks(url):
 
 async def process_spotify_album(query):
     tracks        = get_spotify_album_tracks(query)
-    # print(tracks)
     album_name = get_spotify_album_name(query)
-    # print(album_name)
     to_append     = []
     failures      = 0
     for track in tracks:
@@ -418,14 +416,14 @@ def sort_cache():
 
         keys_to_delete = []
         for cached_url in data:
-            date_to_check = datetime.datetime.strptime(data[cached_url][last_accessed], '%Y-%m-%d')
+            date_to_check = datetime.datetime.strptime(data[cached_url]['last_accessed'], '%Y-%m-%d')
             current_date = datetime.datetime.now()
             delta_time = current_date - date_to_check
             if delta_time > datetime.timedelta(weeks=24):
                 keys_to_delete.append(cached_url)
 
         for key in keys_to_delete:
-            os.remove(data[key][path])
+            os.remove(data[key]['path'])
             del data[key]
 
         with open(cache_path, 'w') as write_file:
@@ -471,8 +469,28 @@ def add_to_q(what):
         return False
     
 
-def get_random_cached_url():
-    return random.choice(get_cached_urls())
+def get_random_cached_urls(n):
+    with open(json_cache_file, 'r') as r:
+        cache = json.load(r)
+
+    cached_urls = get_cached_urls()
+    weights = [cache[url]['weight'] for url in cached_urls]
+
+    selection_weights = [1 / (1 + weight) for weight in weights]
+
+    total_weight = sum(selection_weights)
+    normalized_weights = [w / total_weight for w in selection_weights]
+
+    random_urls = random.choices(cached_urls, weights=normalized_weights, k=n)
+
+    for url in random_urls:
+        cache[url]['weight'] += 1
+
+    with open(json_cache_file, 'w') as w:
+        json.dump(cache, w, indent=4)
+
+    return list(set(random_urls))
+
 
 
 def clear_logs():
@@ -481,16 +499,28 @@ def clear_logs():
 
 
 def reformat_cache():
-    with open(r'C:\Users\absol\Desktop\python\DIABETESBOT\res\cache_placeholder.json', 'r') as r:
+    with open(r'C:\Users\absol\Desktop\python\DIABETESBOT\res\cache_backup.json', 'r') as r:
         cache = json.load(r)
     
     new_cache = {}
     for url, details in cache.items():
         if isinstance(cache[url], list):
             new_cache[url] = {
-                "path": details[PATH], #0
-                "title": details[TITLE], #1
-                "last_accessed": details[LAST_ACCESSED] #2
+                "path": details[0], 
+                "title": details[1], 
+                "last_accessed": details[2], 
+                "weight": 1
             }
     with open(json_cache_file, 'w') as w:
         json.dump(new_cache, w, indent=4)
+
+
+def reset_weighting():
+    with open(json_cache_file, 'r') as r:
+        cache = json.load(r)
+    
+    for url in cache.keys():
+        cache[url]['weight'] = 1
+
+    with open(json_cache_file, 'w') as w:
+        json.dump(cache, w, indent=4)
