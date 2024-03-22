@@ -65,26 +65,27 @@ Every second:
 If bot is not playing anything and queue is not empty,
 play next song
 '''
-@tasks.loop(seconds=1.0)
-async def play_next_song(ctx):
-    if ctx.voice_client and not ctx.voice_client.is_playing() and not ctx.voice_client.is_paused():
-        if queue:
-            next_song = queue.pop(0)
-            if next_song == None:
-                await ctx.send("Problem with this song, skipping to next one")
-                await play_next_song(ctx)
-            ctx.voice_client.play(next_song, after=lambda e: None)  # No after callback
-            set_current_player(next_song)
-            set_np(next_song.title)
-            await ctx.send(f'--- Now playing: {next_song.title} ---')
+# @tasks.loop(seconds=1.0)
+# async def play_next_song(ctx):
+#     if ctx.voice_client and not ctx.voice_client.is_playing() and not ctx.voice_client.is_paused():
+#         if queue:
+#             next_song = queue.pop(0)
+#             if next_song == None:
+#                 await ctx.send("Problem with this song, skipping to next one")
+#                 await play_next_song(ctx)
+#             ctx.voice_client.play(next_song, after=lambda e: None)  # No after callback
+#             set_current_player(next_song)
+#             set_np(next_song.title)
+#             await ctx.send(f'--- Now playing: {next_song.title} ---')
+            
 
 '''
 Helper for @play_next_song function
 Assert bot is ready
 '''
-@play_next_song.before_loop
-async def before_play_next_song():
-    await bot.wait_until_ready()
+# @play_next_song.before_loop
+# async def before_play_next_song():
+#     await bot.wait_until_ready()
 
 '''
 Fetch all tracks in a given spotify playlist @playlist_url
@@ -524,3 +525,25 @@ def reset_weighting():
 
     with open(json_cache_file, 'w') as w:
         json.dump(cache, w, indent=4)
+
+
+def toggle_silence():
+    global silence_bool
+    silence_bool = not silence_bool
+    return silence_bool
+
+def get_silence_bool():
+    global silence_bool
+    return silence_bool
+
+def idle():
+    global idle_count
+    idle_count += 1
+    if idle_count >= (10 * 60):
+        return True
+    else:
+        return False
+
+def set_silence(bool):
+    global silence_bool
+    silence_bool = bool

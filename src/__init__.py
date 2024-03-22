@@ -25,7 +25,8 @@ queue = []
 top_songs = []
 now_playing = None
 current_player = None
-silence = False
+silence_bool = True
+idle_count = 0
 
 class YTDLSource(discord.PCMVolumeTransformer):
     def __init__(self, source, *, data, url, volume=0.5):

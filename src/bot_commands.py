@@ -8,6 +8,7 @@ async def on_ready():
 
     clear_logs()
     reset_weighting()
+    set_silence(False)
 
     # reformat_cache()
 
@@ -42,6 +43,30 @@ async def join(ctx):
 
     if not play_next_song.is_running():
         play_next_song.start(ctx)
+
+
+@tasks.loop(seconds=1.0)
+async def play_next_song(ctx):
+    if ctx.voice_client and not ctx.voice_client.is_playing() and not ctx.voice_client.is_paused():
+        if queue:
+            next_song = queue.pop(0)
+            if next_song == None:
+                await ctx.send("Problem with this song, skipping to next one")
+                await play_next_song(ctx)
+            ctx.voice_client.play(next_song, after=lambda e: None)  # No after callback
+            set_current_player(next_song)
+            set_np(next_song.title)
+            await ctx.send(f'--- Now playing: {next_song.title} ---')
+        else:
+            if not get_silence_bool():
+                await play_random(ctx)
+            else:
+                should_leave = idle()
+                if should_leave:
+                    voice_client = ctx.message.guild.voice_client
+                    queue.clear()
+                    await voice_client.disconnect()
+                    play_next_song.stop()
 
 
 @bot.command(name='play', aliases=['p', "pl", "pla", "spela"], help='Plays a given url (youtube, spotify, soundcloud)')
@@ -355,3 +380,11 @@ async def play_random(ctx, n = 1):
         await play(ctx, url, "-t")
 
 
+@bot.command(name="silence", help="Toggle silence mode.")
+@is_author_in_voice_channel()
+async def silence(ctx):
+    is_silenced = toggle_silence()
+    if(is_silenced):
+        await ctx.send("Silence has been turned on.")
+    else:
+        await ctx.send("Silence has been turned off.")
