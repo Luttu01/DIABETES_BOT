@@ -8,8 +8,7 @@ async def on_ready():
 
     clear_logs()
     reset_weighting()
-    set_silence(False)
-
+    set_silence(True)
     # reformat_cache()
 
     logging.info('Starting bot...')
@@ -27,6 +26,10 @@ async def on_ready():
     sort_counter()
     print(f"\rsorting counters took: {time.time()-counter_start_time} seconds", flush=True )
     logging.debug('Finished sorting url counter.')
+
+    logging.debug('Removing doomed urls.')
+    remove_doomed_urls()
+    logging.debug('Finished removing doomed urls.')
 
     print(f'Logged in as {bot.user.name}')
 
@@ -47,31 +50,31 @@ async def join(ctx):
 
 @tasks.loop(seconds=1.0)
 async def play_next_song(ctx):
-    if ctx.voice_client and not ctx.voice_client.is_playing() and not ctx.voice_client.is_paused():
-        if queue:
-            next_song = queue.pop(0)
-            if next_song == None:
-                await ctx.send("Problem with this song, skipping to next one")
-                await play_next_song(ctx)
-            ctx.voice_client.play(next_song, after=lambda e: None)  # No after callback
-            set_current_player(next_song)
-            set_np(next_song.title)
-            await ctx.send(f'--- Now playing: {next_song.title} ---')
+    if ctx.voice_client:
+        voice_channel = ctx.voice_client.channel
+        members = [member for member in voice_channel.members if not member.bot]
+        if members:
+            if not ctx.voice_client.is_playing() and not ctx.voice_client.is_paused():
+                if queue:
+                    next_song = queue.pop(0)
+                    if next_song is None:
+                        await ctx.send("Problem with this song, skipping to next one")
+                        await play_next_song(ctx)
+                    else:
+                        ctx.voice_client.play(next_song)
+                        set_current_player(next_song)
+                        set_np(next_song.title)
+                        await ctx.send(f'--- Now playing: {next_song.title} ---')
+                else:
+                    if not get_silence_bool():
+                        await play_random(ctx)
         else:
-            if not get_silence_bool():
-                await play_random(ctx)
-            else:
-                should_leave = idle()
-                if should_leave:
-                    voice_client = ctx.message.guild.voice_client
-                    queue.clear()
-                    await voice_client.disconnect()
-                    play_next_song.stop()
+            leave(ctx)
+            print("No members in voice channel.")
 
 
-@bot.command(name='play', aliases=['p', "pl", "pla", "spela"], help='Plays a given url (youtube, spotify, soundcloud)')
-@is_author_in_voice_channel()
-async def play(ctx, query: str, *flags):
+@bot.command(name='play', aliases=['p', "pl", "pla", "spela"], help='Plays a given url (youtube, spotify, soundcloud) or alias')
+async def play(ctx, query: str, *flags, **kw):
     try:
         assert ctx != None
     except AssertionError:
@@ -83,9 +86,15 @@ async def play(ctx, query: str, *flags):
 
     if ctx.author.name not in get_spoofed_users():
         spoof_user(ctx.author.name, ctx.author.id)
+
+    logging.debug(f"flags: {flags}")
+    
+    mtag = extract_mtag(flags)
+    print(f"extracted mtag: {mtag}")
     
     query_lower = query.lower()
     start_time  = time.time()
+    finished    = lambda: time.time() - start_time  
 
     if not assert_url(query) and not assert_alias(query_lower):
         best_match, score = rapidfuzz.process.extractOne(query_lower, get_aliases(), scorer=rapidfuzz.fuzz.WRatio)[:2]
@@ -108,7 +117,7 @@ async def play(ctx, query: str, *flags):
                 await ctx.send("Processing playlist, you can queue other songs meanwhile.")
                 playlist_name, failures = await process_spotify_playlist(query)
                 await ctx.send(f"**Added {playlist_name!r} to the queue. Failed to load {failures} songs.**")
-                print(f"time: {time.time() - start_time}")
+                print(f"time: {finished()}")
                 return
             except youtube_dl.DownloadError as e:
                 await ctx.send("There was an error processing your request. Please try a different URL or check the URL format.")
@@ -118,15 +127,19 @@ async def play(ctx, query: str, *flags):
             await ctx.send("Processing album, you can queue other songs meanwhile.")
             album_name, failures = await process_spotify_album(query)
             await ctx.send(f"**Added {album_name!r} to the queue. Failed to load {failures} songs.**")
-            print(f"time: {time.time() - start_time}")
+            print(f"time: {finished()}")
             return
         
         elif 'playlist' in query and "youtube" in query:
             try:
+                if '-d' in flags and mtag:
+                    stream = False
+                else:
+                    stream = True
                 await ctx.send("Processing playlist, you can queue other songs meanwhile.")
-                playlist_name, failures = await process_yt_playlist(query)
+                playlist_name, failures = await process_yt_playlist(query, stream, mtag)
                 await ctx.send(f"**Added {playlist_name!r} to the queue. Failed to load {failures} songs.**")
-                print(f"time: {time.time() - start_time}")
+                print(f"time: {finished()}")
                 return
             except youtube_dl.DownloadError as e:
                 await ctx.send("There was an error processing your request. Please try a different URL or check the URL format.")
@@ -156,14 +169,24 @@ async def play(ctx, query: str, *flags):
             await ctx.send("There was an error processing your request. Please try a different URL or check the URL format.")
             print(e)
 
-            
         if '-t' not in flags:
             print("updating counters.")
             logging.info('Updating counters.')
             update_url_counter(url, player.title)
             update_request_counter(ctx.author.name)
         
-        print(f"time: {time.time() - start_time}")
+        if mtag:
+            existing_tag = add_tag(player.url, mtag)
+            if existing_tag:
+                await ctx.send(f"That song already has the tag: {existing_tag}")
+            else:
+                await ctx.send(f"Successfully added the tag: {mtag!r}")
+
+        if flags and not mtag and '-t' not in flags:
+            await ctx.send("That tag doesn't exist.")
+            return
+
+        print(f"time: {finished()}")
             
         
 
@@ -173,6 +196,13 @@ async def skip(ctx):
     if not ctx.voice_client or not ctx.voice_client.is_playing():
         await ctx.send("No song is currently playing.")
         return
+    
+    if who := str(ctx.author.id) == os.getenv('DISCORD_VICTOR_TOKEN'):
+        if check_allowed_to_skip(who, get_current_player_url()):
+            pass
+        else:
+            await ctx.send("You lack privilege to skip this song.")
+        
 
     ctx.voice_client.stop()
     await ctx.send(f"Skipped the song: {get_np()}.")
@@ -181,7 +211,6 @@ async def skip(ctx):
 
 
 @bot.command(name='leave', aliases=["lämna"], help='To make the bot leave the voice channel')
-@is_author_in_voice_channel()
 async def leave(ctx):
     voice_client = ctx.message.guild.voice_client
     if voice_client.is_connected():
@@ -372,10 +401,21 @@ async def nowplaying(ctx):
 
 
 @bot.command(name="random", aliases=["r", "ra", "ran", "rand", "rando", "slumpa"], help="Play a randomly selected song that has been requested within the last 6 months.")
-@is_author_in_voice_channel()
-async def play_random(ctx, n = 1):
-    logging.debug(f'play_random called {n} times.')
-    random_urls = get_random_cached_urls(n)
+async def play_random(ctx, *flags):
+    # logging.debug(f'play_random called {n} times.')
+    mtag = None
+    n = 1
+    for flag in flags:
+        if str.isdigit(flag):
+           n = flag
+        else:
+            mtag = flag
+            if not assert_tag(mtag):
+                await ctx.send("That's not a valid tag.")
+                return
+
+    random_urls = get_random_cached_urls(n, mtag)
+
     for url in random_urls:
         await play(ctx, url, "-t")
 
@@ -388,3 +428,43 @@ async def silence(ctx):
         await ctx.send("Silence has been turned on.")
     else:
         await ctx.send("Silence has been turned off.")
+
+
+@bot.command(name="replace", help="Replace current song in cache with given url")
+async def replace(ctx, url):
+    logging.debug(f"url to replace WITH: {url}")
+    url_to_work_with = get_current_player_url()
+    logging.debug(f"url to work with: {url_to_work_with}")
+    player = await get_player(url)
+    logging.debug(f"cleaned up url: {player.url}")
+    # await skip(ctx)
+    new_path = get_path_from_url(player.url)
+    # remove_cached_audio(url_to_work_with)
+    set_path_for_url(new_path, url_to_work_with)
+    remove_cache_entry(player.url)
+
+
+@bot.command(name="tag", help="Create a new music tag")
+async def tag(ctx, new_tag):
+    if new_tag in get_tags():
+        await ctx.send("That tag already exists")
+        return
+    logging.debug(f"Creating tag: {new_tag!r}")
+    success = create_tag(new_tag)
+    if success:
+        logging.debug("Success")
+        await ctx.send(f"Successfully created the tag: {new_tag!r}")
+        return
+    else:
+        logging.error("Failed")
+        await ctx.send("Something went wrong when trying to create the tag. Please try again.")
+        return
+    
+
+@bot.command(name="trash", help="Mark currently playing song to be removed at next boot.")
+async def trash(ctx):
+    success = to_remove(get_current_player_url())
+    if success:
+        await ctx.send("Successfully marked song to be deleted.")
+    else:
+        await ctx.send("Something went wrong.")

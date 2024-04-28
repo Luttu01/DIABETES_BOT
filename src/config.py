@@ -6,9 +6,11 @@ jsons_path = r'C:\Users\absol\Desktop\python\DIABETESBOT\res'
 cache_path = r'C:\Users\absol\Desktop\python\DIABETESBOT\cache'
 json_cache_file = os.path.join(cache_path, r'C:\Users\absol\Desktop\python\DIABETESBOT\res\cache.json')
 log_file_path = r"C:\Users\absol\Desktop\python\DIABETESBOT\logs\bot.log"
+json_tags_file_path = r'C:\Users\absol\Desktop\python\DIABETESBOT\res\tags.json'
+json_to_remove_path = r'C:\Users\absol\Desktop\python\DIABETESBOT\res\to_remove.json'
 
 # Logging
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s', filename=log_file_path)
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - [%(funcName)s] - %(levelname)s - %(message)s', filename=log_file_path)
 
 # Constants for cache.json
 # PATH = 0

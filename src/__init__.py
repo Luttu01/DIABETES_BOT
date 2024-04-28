@@ -39,8 +39,11 @@ class YTDLSource(discord.PCMVolumeTransformer):
     async def from_url(self, url, *, loop, stream=False, spotify_url=None):
         cached_path = self.check_url_in_cache(url)
         if cached_path:
-            filename, title = cached_path
-            return self(discord.FFmpegPCMAudio(filename), data={'title': title}, url=url)
+            filename, title, volume = cached_path
+            if spotify_url:
+                return self(discord.FFmpegPCMAudio(filename), data={'title': title}, url=spotify_url, volume=volume)
+            else:
+                return self(discord.FFmpegPCMAudio(filename), data={'title': title}, url=url, volume=volume)
         elif stream:
             data = await loop.run_in_executor(None, lambda: ytdl.extract_info(url, download=False))
             if data is None:
@@ -54,9 +57,10 @@ class YTDLSource(discord.PCMVolumeTransformer):
             filename = ytdl.prepare_filename(data)
             if spotify_url:
                 await self.update_json_cache(spotify_url, filename, data.get('title'))
+                return self(discord.FFmpegPCMAudio(filename), data=data, url=spotify_url)
             else:
                 await self.update_json_cache(url, filename, data.get('title'))
-            return self(discord.FFmpegPCMAudio(filename), data=data, url=url)
+                return self(discord.FFmpegPCMAudio(filename), data=data, url=url)
     
     @staticmethod
     def check_url_in_cache(url):
@@ -69,7 +73,7 @@ class YTDLSource(discord.PCMVolumeTransformer):
             cache[url]['last_accessed'] = datetime.datetime.now().strftime("%Y-%m-%d")
             with open(rf'{jsons_path}\cache.json', "w") as w:
                 json.dump(cache, w, indent=4)
-            return (cache[url]['path'], cache[url]['title'])
+            return (cache[url]['path'], cache[url]['title'], cache[url]['volume'])
         return None
 
     @staticmethod
@@ -82,8 +86,10 @@ class YTDLSource(discord.PCMVolumeTransformer):
                 'path': path,
                 'title': title,
                 'last_accessed': last_accessed,
-                'weight': 1
+                'weight': 1,
+                'volume': 0.5
             }
+        
         cache[url] = _new_cache_entry(path, title, datetime.datetime.now().strftime("%Y-%m-%d"))
 
         with open(rf'{jsons_path}\cache.json', 'w') as f:

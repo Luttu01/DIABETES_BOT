@@ -11,6 +11,7 @@ def is_author_in_voice_channel():
         @wraps(func)
         async def wrapper(ctx, *args, **kwargs):
             if not ctx.author.voice:
+                logging.debug(f'Decorator failed for function: {func.__name__}')
                 await ctx.send("You are not connected to a voice channel.")
                 return
         
@@ -271,7 +272,7 @@ def get_alias_from_url(url):
         return aliases[url]
      
 def get_url_from_alias(alias):
-     with open(rf'{jsons_path}\aliases.json', 'r') as read_file:
+    with open(rf'{jsons_path}\aliases.json', 'r') as read_file:
         aliases = json.load(read_file)
         for url, current_alias in aliases.items():
             if current_alias == alias:
@@ -339,17 +340,19 @@ def _extract_playlist_id(url):
     return playlist_id
 
 
-async def process_yt_playlist(query):
+async def process_yt_playlist(query, stream, mtag):
     try:
         tracks        = get_youtube_playlist_urls(query)
         playlist_name = get_yt_playlist_name(query)
         to_append     = []
         failures      = 0
         for url in tracks:
-            player = await get_player(url, stream=True)
+            player = await get_player(url, stream=stream)
             if player is None:
                 failures += 1
                 continue
+            if mtag:
+                add_tag(player.url, mtag)
             to_append.append(player)
         add_to_q(to_append)
         return (playlist_name, failures)
@@ -395,7 +398,7 @@ def get_spotify_album_tracks(url):
 
 async def process_spotify_album(query):
     tracks        = get_spotify_album_tracks(query)
-    album_name = get_spotify_album_name(query)
+    album_name    = get_spotify_album_name(query)
     to_append     = []
     failures      = 0
     for track in tracks:
@@ -443,6 +446,7 @@ def get_np():
     global now_playing
     return now_playing
 
+
 def set_current_player(player):
     global current_player
     current_player = player
@@ -451,6 +455,7 @@ def set_current_player(player):
 def get_current_player_title():
     global current_player
     return current_player.title
+
 
 def get_current_player_url():
     global current_player
@@ -470,19 +475,49 @@ def add_to_q(what):
         return False
     
 
-def get_random_cached_urls(n):
+# def get_random_cached_urls(n):
+#     with open(json_cache_file, 'r') as r:
+#         cache = json.load(r)
+
+#     cached_urls = get_cached_urls()
+#     random.shuffle(cached_urls)
+#     weights = [cache[url]['weight'] for url in cached_urls]
+
+#     selection_weights = [1 / (1 + weight) for weight in weights]
+
+#     total_weight = sum(selection_weights)
+#     normalized_weights = [w / total_weight for w in selection_weights]
+
+#     random_urls = random.choices(cached_urls, weights=normalized_weights, k=n)
+
+#     for url in random_urls:
+#         cache[url]['weight'] += 1
+
+#     with open(json_cache_file, 'w') as w:
+#         json.dump(cache, w, indent=4)
+
+#     return list(set(random_urls))
+
+def get_random_cached_urls(n, mtag):
     with open(json_cache_file, 'r') as r:
         cache = json.load(r)
 
+    weighted_urls = []
+    
     cached_urls = get_cached_urls()
-    weights = [cache[url]['weight'] for url in cached_urls]
 
-    selection_weights = [1 / (1 + weight) for weight in weights]
+    if mtag == None:
+        for url in cached_urls:
+            for _ in range(100//cache[url]['weight']):
+                weighted_urls.append(url)
+    else:
+        for url in cached_urls:
+            if check_tag(cache[url], mtag):
+                weighted_urls.append(url)
 
-    total_weight = sum(selection_weights)
-    normalized_weights = [w / total_weight for w in selection_weights]
+    random.shuffle(weighted_urls)
 
-    random_urls = random.choices(cached_urls, weights=normalized_weights, k=n)
+    random_urls = list(set(random.choices(weighted_urls, k=int(n))))
 
     for url in random_urls:
         cache[url]['weight'] += 1
@@ -490,8 +525,7 @@ def get_random_cached_urls(n):
     with open(json_cache_file, 'w') as w:
         json.dump(cache, w, indent=4)
 
-    return list(set(random_urls))
-
+    return random_urls
 
 
 def clear_logs():
@@ -510,10 +544,23 @@ def reformat_cache():
                 "path": details[0], 
                 "title": details[1], 
                 "last_accessed": details[2], 
-                "weight": 1
+                "weight": 1,
+                "volume": 0.5
             }
     with open(json_cache_file, 'w') as w:
         json.dump(new_cache, w, indent=4)
+    
+# def reformat_cache():
+#     with open(r'C:\Users\absol\Desktop\python\DIABETESBOT\res\cache_backup.json', 'r') as r:
+#         cache = json.load(r)
+    
+#     for url in cache.keys():
+#         print(url)
+#         print(cache[url])
+#         cache[url]["volume"] = 0.5
+
+#     with open(json_cache_file, 'w') as w:
+#         json.dump(cache, w, indent=4)
 
 
 def reset_weighting():
@@ -547,3 +594,148 @@ def idle():
 def set_silence(bool):
     global silence_bool
     silence_bool = bool
+
+
+def check_allowed_to_skip(who, current_song):
+    with open(r'C:\Users\absol\Desktop\python\DIABETESBOT\res\blacklists.json', 'r') as r:
+        blacklists = json.load(r)
+    
+    if current_song in blacklists[who]:
+        return False
+    else:
+        return True
+
+
+def remove_cache_entry(url):
+    with open(json_cache_file, 'r') as r:
+        cache = json.load(r)
+    
+    del cache[url]
+
+    with open(json_cache_file, 'w') as w:
+        json.dump(cache, w, indent=4)
+
+
+def get_path_from_url(url):
+    with open(json_cache_file, 'r') as r:
+        cache = json.load(r)
+    
+    return cache[url]['path']
+
+
+def remove_cached_audio(url):
+    with open(json_cache_file, 'r') as r:
+        cache = json.load(r)
+    
+    os.remove(cache[url]['path'])
+
+
+def set_path_for_url(new_path, url):
+    with open(json_cache_file, 'r') as r:
+        cache = json.load(r)
+
+    cache[url]['path'] = new_path
+
+    with open(json_cache_file, 'w') as w:
+        json.dump(cache, w, indent=4)
+
+
+def get_tags():
+    with open(json_tags_file_path, 'r') as r:
+        data = json.load(r)
+        return data['tags']
+    
+
+def create_tag(new_tag):
+    try:
+        try:
+            with open(json_tags_file_path, 'r') as r:
+                data = json.load(r)
+                tags = data.get('tags', [])
+        except json.JSONDecodeError:
+            tags = []
+            
+        tags.append(new_tag)
+            
+        with open(json_tags_file_path, 'w') as w:
+            data['tags'] = tags
+            json.dump(data, w, indent=4)
+        
+        return True
+    
+    except Exception:
+        return False
+    
+
+def add_tag(url, tag):
+    with open(json_cache_file, 'r') as r:
+        cache = json.load(r)
+    
+    if 'tag' in cache[url]:
+        return cache[url]['tag']
+    else:
+        cache[url]['tag'] = tag
+
+    with open(json_cache_file, 'w') as w:
+        json.dump(cache, w, indent=4)
+        return None
+    
+    
+def check_tag(cache_entry_attributes, mtag):
+    cea = cache_entry_attributes
+    if 'tag' in cea:
+        return cea['tag'] == mtag
+    else:
+        return False
+    
+
+def assert_tag(mtag):
+    return mtag in get_tags()
+
+
+def extract_mtag(flags):
+    tags = get_tags()
+    for flag in flags:
+        if flag in tags:
+            return flag
+    return False
+
+
+def to_remove(new_tag):
+    try:
+        try:
+            with open(json_to_remove_path, 'r') as r:
+                data = json.load(r)
+                remove_list = data.get('to_remove', [])
+        except json.JSONDecodeError:
+            data = {}
+            remove_list = []
+            
+        remove_list.append(new_tag)
+            
+        with open(json_to_remove_path, 'w') as w:
+            data['to_remove'] = remove_list
+            json.dump(data, w, indent=4)
+        
+        return True
+    
+    except Exception:
+        return False
+    
+
+def remove_doomed_urls():
+    try:
+        with open(json_to_remove_path, 'r') as r:
+            data = json.load(r)
+            remove_list = data.get('to_remove', [])
+    except json.JSONDecodeError:
+        data = {}
+        remove_list = []
+    
+    for url in remove_list:
+        remove_cached_audio(url)
+        remove_cache_entry(url)
+    
+    with open(json_to_remove_path, 'w') as w:
+        data['to_remove'] = []
+    
