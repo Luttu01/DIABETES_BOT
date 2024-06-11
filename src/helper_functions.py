@@ -42,13 +42,20 @@ Helper function for @get_youtube_link
 Search after relevant youtube link, using @query
 '''
 def _search_youtube(query):
-    with youtube_dl.YoutubeDL(ytdl_format_options) as ydl:
-        try:
-            info = ydl.extract_info(query, download=False)
-            return info['entries'][0]['webpage_url']
-        except Exception as e:
-            print(f"Error fetching YouTube URL: {e}")
-            return None
+    youtube = build('youtube', 'v3', developerKey=os.getenv('YT_API_KEY'))
+    
+    search_response = youtube.search().list(
+        q=query,
+        part='snippet',
+        maxResults=1
+    ).execute()
+    
+    if search_response['items']:
+        video_id = search_response['items'][0]['id']['videoId']
+        video_url = f"https://www.youtube.com/watch?v={video_id}"
+        return video_url
+    else:
+        return "No video found for the given query."
         
 '''
 Extract youtube link, 
@@ -58,7 +65,8 @@ async def get_youtube_link(spotify_url):
     track_info = sp.track(spotify_url)
     track_name = track_info['name']
     artist_name = track_info['artists'][0]['name']
-    youtube_link = _search_youtube(f"{track_name} {artist_name}")
+    logging.debug(f'Searching youtube with query: {track_name} {artist_name} audio')
+    youtube_link = _search_youtube(f"{track_name} {artist_name} audio")
     return youtube_link
 
 '''
@@ -121,13 +129,13 @@ Used in @./bot_commands.play function
 '''
 def update_url_counter(url, title):
     try:
-        with open(rf'{jsons_path}\url_counter.json', 'r') as read_file:
+        with open(rf'{res_path}\url_counter.json', 'r') as read_file:
             open_json = json.load(read_file)
         if url in open_json:
             open_json[url][0] += 1
         else:
             open_json[url] = [1, title]
-        with open(rf'{jsons_path}\url_counter.json', 'w') as write_file:
+        with open(rf'{res_path}\url_counter.json', 'w') as write_file:
             json.dump(open_json, write_file, indent=4)
     except (FileNotFoundError, json.JSONDecodeError) as e:
         print(e)
@@ -138,9 +146,9 @@ Used in @./bot_commands.play function
 '''
 def update_request_counter(user):
     try:
-        with open(rf'{jsons_path}\play_requests_counter.json', 'r') as read_file:
+        with open(rf'{res_path}\play_requests_counter.json', 'r') as read_file:
             open_json = json.load(read_file)
-            with open(rf'{jsons_path}\play_requests_counter.json', 'w') as write_file:
+            with open(rf'{res_path}\play_requests_counter.json', 'w') as write_file:
                 open_json[user] = open_json[user] + 1 if user in open_json else 1
                 json.dump(open_json, write_file, indent=4)
     except (FileNotFoundError, json.JSONDecodeError) as e:
@@ -152,11 +160,11 @@ Used in @./bot_commands.alias function
 '''
 def add_alias(url, new_name):
     try:
-        with open(rf'{jsons_path}\aliases.json', 'r') as read_file:
+        with open(rf'{res_path}\aliases.json', 'r') as read_file:
             aliases = json.load(read_file)
         if url in aliases.keys():
             return False
-        with open(rf'{jsons_path}\aliases.json', 'w') as write_file:
+        with open(rf'{res_path}\aliases.json', 'w') as write_file:
             aliases[url] = new_name
             json.dump(aliases, write_file, indent=4)
             return True
@@ -165,7 +173,7 @@ def add_alias(url, new_name):
 
 def spoof_user(username, id):
     try:
-        with open(rf'{jsons_path}\author_id.json', 'r') as read_file:
+        with open(rf'{res_path}\author_id.json', 'r') as read_file:
             author_ids = json.load(read_file)
         
         if id in author_ids.values():
@@ -175,7 +183,7 @@ def spoof_user(username, id):
         else:
             author_ids[username] = id
         
-        with open(rf'{jsons_path}\author_id.json', 'w') as write_file:
+        with open(rf'{res_path}\author_id.json', 'w') as write_file:
             json.dump(author_ids, write_file, indent=4)
     except (FileNotFoundError, json.JSONDecodeError) as e:
         print(e)
@@ -189,14 +197,14 @@ def remove_alias(alias):
     if not assert_alias(alias):
         return False
     try:
-        with open(rf'{jsons_path}\aliases.json', 'r') as read_file:
+        with open(rf'{res_path}\aliases.json', 'r') as read_file:
             aliases = json.load(read_file)
         url = get_url_from_alias(alias)
         if url:
             del aliases[url]
         else:
             return False
-        with open(rf'{jsons_path}\aliases.json', 'w') as write_file:
+        with open(rf'{res_path}\aliases.json', 'w') as write_file:
             json.dump(aliases, write_file, indent=4)
             return True
     except (FileNotFoundError, json.JSONDecodeError) as e:
@@ -208,10 +216,10 @@ used in @./bot_commands.join function
 '''
 def sort_counter():
     try:
-        with open(rf'{jsons_path}\url_counter.json', 'r') as read_file:
+        with open(rf'{res_path}\url_counter.json', 'r') as read_file:
             data = json.load(read_file)
         sorted_data = dict(sorted(data.items(), key=lambda x: x[1][0], reverse=True))
-        with open(rf'{jsons_path}\url_counter.json', 'w') as write_file:
+        with open(rf'{res_path}\url_counter.json', 'w') as write_file:
             json.dump(sorted_data, write_file, indent=4)
     except FileNotFoundError:
         print("File not found.")
@@ -225,7 +233,7 @@ used in @./bot_commands.topsongs function
 async def fetch_top_songs(ctx):
     async with ctx.typing():
         try:
-            with open(rf'{jsons_path}\url_counter.json', 'r') as file:
+            with open(rf'{res_path}\url_counter.json', 'r') as file:
                 data = json.load(file)
             list_of_tuples = [(data[value][1], data[value][0]) for value in data]
             return list_of_tuples[:10]
@@ -267,12 +275,12 @@ def assert_url(url):
     return "spotify" in url or "youtube" in url or "soundcloud" in url
 
 def get_alias_from_url(url):
-     with open(rf'{jsons_path}\aliases.json', 'r') as read_file:
+     with open(rf'{res_path}\aliases.json', 'r') as read_file:
         aliases = json.load(read_file)
         return aliases[url]
      
 def get_url_from_alias(alias):
-    with open(rf'{jsons_path}\aliases.json', 'r') as read_file:
+    with open(rf'{res_path}\aliases.json', 'r') as read_file:
         aliases = json.load(read_file)
         for url, current_alias in aliases.items():
             if current_alias == alias:
@@ -280,12 +288,12 @@ def get_url_from_alias(alias):
         return False
 
 def get_aliases():
-    with open(rf'{jsons_path}\aliases.json', 'r') as read_file:
+    with open(rf'{res_path}\aliases.json', 'r') as read_file:
         aliases = json.load(read_file)
         return list(aliases.values())
 
 def get_alias_urls():
-    with open(rf'{jsons_path}\aliases.json', 'r') as read_file:
+    with open(rf'{res_path}\aliases.json', 'r') as read_file:
         aliases = json.load(read_file)
         return list(aliases.keys())
 
@@ -293,12 +301,12 @@ def assert_alias(alias):
     return alias in get_aliases()
 
 def get_cached_urls():
-    with open(rf'{jsons_path}\cache.json', 'r') as read_file:
+    with open(rf'{res_path}\cache.json', 'r') as read_file:
         caches = json.load(read_file)
         return list(caches.keys())
 
 def get_spoofed_users():
-    with open(rf'{jsons_path}\author_id.json', 'r') as read_file:
+    with open(rf'{res_path}\author_id.json', 'r') as read_file:
         caches = json.load(read_file)
         return list(caches.keys())
 
@@ -414,7 +422,7 @@ async def process_spotify_album(query):
 
 def sort_cache():
     try:
-        cache_path = os.path.join(jsons_path, 'cache.json')
+        cache_path = os.path.join(res_path, 'cache.json')
         with open(cache_path, 'r') as read_file:
             data = json.load(read_file)
 
@@ -529,38 +537,8 @@ def get_random_cached_urls(n, mtag):
 
 
 def clear_logs():
-    with open(log_file_path, 'w'):
+    with open(logs_path, 'w'):
         pass
-
-
-def reformat_cache():
-    with open(r'C:\Users\absol\Desktop\python\DIABETESBOT\res\cache_backup.json', 'r') as r:
-        cache = json.load(r)
-    
-    new_cache = {}
-    for url, details in cache.items():
-        if isinstance(cache[url], list):
-            new_cache[url] = {
-                "path": details[0], 
-                "title": details[1], 
-                "last_accessed": details[2], 
-                "weight": 1,
-                "volume": 0.5
-            }
-    with open(json_cache_file, 'w') as w:
-        json.dump(new_cache, w, indent=4)
-    
-# def reformat_cache():
-#     with open(r'C:\Users\absol\Desktop\python\DIABETESBOT\res\cache_backup.json', 'r') as r:
-#         cache = json.load(r)
-    
-#     for url in cache.keys():
-#         print(url)
-#         print(cache[url])
-#         cache[url]["volume"] = 0.5
-
-#     with open(json_cache_file, 'w') as w:
-#         json.dump(cache, w, indent=4)
 
 
 def reset_weighting():
@@ -597,7 +575,7 @@ def set_silence(bool):
 
 
 def check_allowed_to_skip(who, current_song):
-    with open(r'C:\Users\absol\Desktop\python\DIABETESBOT\res\blacklists.json', 'r') as r:
+    with open(json_blacklist_path, 'r') as r:
         blacklists = json.load(r)
     
     if current_song in blacklists[who]:
@@ -641,7 +619,7 @@ def set_path_for_url(new_path, url):
 
 
 def get_tags():
-    with open(json_tags_file_path, 'r') as r:
+    with open(json_tags_path, 'r') as r:
         data = json.load(r)
         return data['tags']
     
@@ -649,7 +627,7 @@ def get_tags():
 def create_tag(new_tag):
     try:
         try:
-            with open(json_tags_file_path, 'r') as r:
+            with open(json_tags_path, 'r') as r:
                 data = json.load(r)
                 tags = data.get('tags', [])
         except json.JSONDecodeError:
@@ -657,7 +635,7 @@ def create_tag(new_tag):
             
         tags.append(new_tag)
             
-        with open(json_tags_file_path, 'w') as w:
+        with open(json_tags_path, 'w') as w:
             data['tags'] = tags
             json.dump(data, w, indent=4)
         

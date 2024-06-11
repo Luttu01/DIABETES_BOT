@@ -2,23 +2,23 @@ from . import discord, os
 import logging
 
 # Paths
-jsons_path = r'C:\Users\absol\Desktop\python\DIABETESBOT\res'
-cache_path = r'C:\Users\absol\Desktop\python\DIABETESBOT\cache'
-json_cache_file = os.path.join(cache_path, r'C:\Users\absol\Desktop\python\DIABETESBOT\res\cache.json')
-log_file_path = r"C:\Users\absol\Desktop\python\DIABETESBOT\logs\bot.log"
-json_tags_file_path = r'C:\Users\absol\Desktop\python\DIABETESBOT\res\tags.json'
-json_to_remove_path = r'C:\Users\absol\Desktop\python\DIABETESBOT\res\to_remove.json'
+parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+res_path   = os.path.join(parent_dir, "res")
+cache_path = os.path.join(parent_dir, "cache")
+logs_path  = os.path.join(parent_dir, "logs", "bot.log")
+
+json_cache_file     = os.path.join(res_path, "cache.json")
+json_tags_path      = os.path.join(res_path, "tags.json")
+json_to_remove_path = os.path.join(res_path, "to_remove.json")
+json_blacklist_path = os.path.join(res_path, "blacklist.json")
+
+denv_path = os.path.join(parent_dir, "res", ".env")
 
 # Logging
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - [%(funcName)s] - %(levelname)s - %(message)s', filename=log_file_path)
-
-# Constants for cache.json
-# PATH = 0
-# TITLE = 1
-# LAST_ACCESSED = 2
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - [%(funcName)s] - %(levelname)s - %(message)s', filename=logs_path)
 
 ytdl_format_options = {
-    'format': 'bestaudio/best',
     'outtmpl': cache_path + r'\%(extractor)s-%(id)s-%(title)s.%(ext)s',
     'verbose': True,
     'restrictfilenames': True,

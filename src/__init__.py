@@ -15,7 +15,7 @@ from dotenv import load_dotenv
 from googleapiclient.discovery import build
 from urllib.parse import urlparse, parse_qs, urlunparse
 
-load_dotenv(dotenv_path= r"C:\Users\absol\Desktop\python\DIABETESBOT\res\.env")
+load_dotenv(dotenv_path=denv_path)
 
 ytdl = youtube_dl.YoutubeDL(ytdl_format_options)
 bot = commands.Bot(command_prefix='-', intents=intents, case_insensitive=True)
@@ -65,20 +65,20 @@ class YTDLSource(discord.PCMVolumeTransformer):
     @staticmethod
     def check_url_in_cache(url):
         try:
-            with open(rf'{jsons_path}\cache.json', 'r') as r:
+            with open(rf'{res_path}\cache.json', 'r') as r:
                 cache = json.load(r)
         except (FileNotFoundError, json.JSONDecodeError):
             cache = {}
         if url in cache.keys():
             cache[url]['last_accessed'] = datetime.datetime.now().strftime("%Y-%m-%d")
-            with open(rf'{jsons_path}\cache.json', "w") as w:
+            with open(rf'{res_path}\cache.json', "w") as w:
                 json.dump(cache, w, indent=4)
             return (cache[url]['path'], cache[url]['title'], cache[url]['volume'])
         return None
 
     @staticmethod
     async def update_json_cache(url, path, title):
-        with open(rf'{jsons_path}\cache.json', 'r') as f:
+        with open(rf'{res_path}\cache.json', 'r') as f:
             cache = json.load(f)
 
         def _new_cache_entry(path, title, last_accessed):
@@ -92,7 +92,7 @@ class YTDLSource(discord.PCMVolumeTransformer):
         
         cache[url] = _new_cache_entry(path, title, datetime.datetime.now().strftime("%Y-%m-%d"))
 
-        with open(rf'{jsons_path}\cache.json', 'w') as f:
+        with open(rf'{res_path}\cache.json', 'w') as f:
             json.dump(cache, f, indent=4)
     
 

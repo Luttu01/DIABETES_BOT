@@ -51,26 +51,20 @@ async def join(ctx):
 @tasks.loop(seconds=1.0)
 async def play_next_song(ctx):
     if ctx.voice_client:
-        voice_channel = ctx.voice_client.channel
-        members = [member for member in voice_channel.members if not member.bot]
-        if members:
-            if not ctx.voice_client.is_playing() and not ctx.voice_client.is_paused():
-                if queue:
-                    next_song = queue.pop(0)
-                    if next_song is None:
-                        await ctx.send("Problem with this song, skipping to next one")
-                        await play_next_song(ctx)
-                    else:
-                        ctx.voice_client.play(next_song)
-                        set_current_player(next_song)
-                        set_np(next_song.title)
-                        await ctx.send(f'--- Now playing: {next_song.title} ---')
+        if not ctx.voice_client.is_playing() and not ctx.voice_client.is_paused():
+            if queue:
+                next_song = queue.pop(0)
+                if next_song is None:
+                    await ctx.send("Problem with this song, skipping to next one")
+                    await play_next_song(ctx)
                 else:
-                    if not get_silence_bool():
-                        await play_random(ctx)
-        else:
-            leave(ctx)
-            print("No members in voice channel.")
+                    ctx.voice_client.play(next_song)
+                    set_current_player(next_song)
+                    set_np(next_song.title)
+                    await ctx.send(f'--- Now playing: {next_song.title} ---')
+            else:
+                if not get_silence_bool():
+                    await play_random(ctx)
 
 
 @bot.command(name='play', aliases=['p', "pl", "pla", "spela"], help='Plays a given url (youtube, spotify, soundcloud) or alias')
@@ -190,7 +184,7 @@ async def play(ctx, query: str, *flags, **kw):
             
         
 
-@bot.command(name='skip', aliases=["s", "sk", "ski", "nästa"], help='Skips the currently playing song')
+@bot.command(name='skip', aliases=["s", "sk", "ski", "nästa", "hoppa"], help='Skips the currently playing song')
 @is_author_in_voice_channel()
 async def skip(ctx):
     if not ctx.voice_client or not ctx.voice_client.is_playing():
@@ -402,7 +396,6 @@ async def nowplaying(ctx):
 
 @bot.command(name="random", aliases=["r", "ra", "ran", "rand", "rando", "slumpa"], help="Play a randomly selected song that has been requested within the last 6 months.")
 async def play_random(ctx, *flags):
-    # logging.debug(f'play_random called {n} times.')
     mtag = None
     n = 1
     for flag in flags:
@@ -442,6 +435,7 @@ async def replace(ctx, url):
     # remove_cached_audio(url_to_work_with)
     set_path_for_url(new_path, url_to_work_with)
     remove_cache_entry(player.url)
+    await ctx.send('Successfully replaced cached audio')
 
 
 @bot.command(name="tag", help="Create a new music tag")
@@ -466,5 +460,6 @@ async def trash(ctx):
     success = to_remove(get_current_player_url())
     if success:
         await ctx.send("Successfully marked song to be deleted.")
+        await skip(ctx)
     else:
         await ctx.send("Something went wrong.")
