@@ -32,6 +32,7 @@ async def check_queue(ctx):
                 await ctx.send(f'--- Now playing: {next_song.title} ---')
                 set_current_player(next_song)
                 set_np(next_song.title)
+                set_duration(0)
             except Exception as e:
                 await ctx.send(f"Error playing the song")
                 print(e)
@@ -63,6 +64,7 @@ using information from given @spotify_url
 '''
 async def get_youtube_link(spotify_url):
     track_info = sp.track(spotify_url)
+    logging.debug(track_info)
     track_name = track_info['name']
     artist_name = track_info['artists'][0]['name']
     logging.debug(f'Searching youtube with query: {track_name} {artist_name} audio')
@@ -252,6 +254,7 @@ async def get_player(url, stream=False):
                 print(sp.track(base_url))
                 url = await get_youtube_link(url)
                 player = await YTDLSource.from_url(url, loop=bot.loop, stream=stream, spotify_url=base_url)
+                logging.debug(f"pl{player.duration}")
             except youtube_dl.DownloadError as e:
                 print(e)
                 return None
@@ -272,7 +275,7 @@ async def get_player(url, stream=False):
     return player
     
 def assert_url(url):
-    return "spotify" in url or "youtube" in url or "soundcloud" in url
+    return "spotify" in url or "youtube" in url or "soundcloud" in url or "youtu.be" in url
 
 def get_alias_from_url(url):
      with open(rf'{res_path}\aliases.json', 'r') as read_file:
@@ -354,6 +357,7 @@ async def process_yt_playlist(query, stream, mtag):
         playlist_name = get_yt_playlist_name(query)
         to_append     = []
         failures      = 0
+        logging.debug(f"tracks are {tracks}")
         for url in tracks:
             player = await get_player(url, stream=stream)
             if player is None:
@@ -376,6 +380,7 @@ async def process_spotify_playlist(query):
     for track in tracks:
         url    = await get_youtube_link(track)
         player = await get_player(url, stream=True)
+        logging.debug(f"player is: {player!r}")
         if player is None:
             failures += 1
             continue
@@ -468,6 +473,11 @@ def get_current_player_title():
 def get_current_player_url():
     global current_player
     return current_player.url
+
+
+def get_current_player_duration():
+    global current_player
+    return current_player.duration if current_player.duration else False
 
 
 def add_to_q(what):
@@ -711,9 +721,24 @@ def remove_doomed_urls():
         remove_list = []
     
     for url in remove_list:
-        remove_cached_audio(url)
+        try:
+            remove_cached_audio(url)
+        except Exception as e:
+            print("failed to remove audio")
+            logging.debug(f"Error with removing cached audio: {e}")
         remove_cache_entry(url)
     
     with open(json_to_remove_path, 'w') as w:
         data['to_remove'] = []
     
+def set_duration(dur):
+    global song_duration
+    song_duration = dur
+
+def get_duration():
+    global song_duration
+    return song_duration 
+
+def duration_seek():
+    global song_duration
+    song_duration += 1

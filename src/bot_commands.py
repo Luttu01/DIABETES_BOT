@@ -13,12 +13,12 @@ async def on_ready():
 
     logging.info('Starting bot...')
 
-    logging.debug('Sorting cache.')
-    cache_start_time = time.time()
-    print("sorting cache", end="", flush=True)
-    sort_cache()
-    print(f"\rsorting cache took: {time.time()-cache_start_time} seconds", flush=True)
-    logging.debug('Finished sorting cache.')
+    # logging.debug('Sorting cache.')
+    # cache_start_time = time.time()
+    # print("sorting cache", end="", flush=True)
+    # sort_cache()
+    # print(f"\rsorting cache took: {time.time()-cache_start_time} seconds", flush=True)
+    # logging.debug('Finished sorting cache.')
 
     logging.debug('Sorting url counter.')
     counter_start_time = time.time()
@@ -50,6 +50,7 @@ async def join(ctx):
 
 @tasks.loop(seconds=1.0)
 async def play_next_song(ctx):
+    duration_seek()
     if ctx.voice_client:
         if not ctx.voice_client.is_playing() and not ctx.voice_client.is_paused():
             if queue:
@@ -61,10 +62,12 @@ async def play_next_song(ctx):
                     ctx.voice_client.play(next_song)
                     set_current_player(next_song)
                     set_np(next_song.title)
+                    set_duration(0)
                     await ctx.send(f'--- Now playing: {next_song.title} ---')
             else:
                 if not get_silence_bool():
                     await play_random(ctx)
+    # logging.debug(f"get duration: {get_duration()}")
 
 
 @bot.command(name='play', aliases=['p', "pl", "pla", "spela"], help='Plays a given url (youtube, spotify, soundcloud) or alias')
@@ -81,6 +84,10 @@ async def play(ctx, query: str, *flags, **kw):
     if ctx.author.name not in get_spoofed_users():
         spoof_user(ctx.author.name, ctx.author.id)
 
+    if ctx.author.id == os.getenv("DISCORD_ZIGENARE_TOKEN"):
+        await ctx.send("lol bög du får inte spela låtar")
+        return
+
     logging.debug(f"flags: {flags}")
     
     mtag = extract_mtag(flags)
@@ -96,7 +103,7 @@ async def play(ctx, query: str, *flags, **kw):
         print(score)
         if score >= 80:
             print(f"best alias match: {best_match}")
-            await ctx.send(f"Your query matched '{best_match}' by {score}%")
+            await ctx.send(f"Your query matched '{best_match}' by {float(score):.1f}%")
             query = best_match
         else:
             await ctx.send("Invalid url.")
@@ -131,6 +138,7 @@ async def play(ctx, query: str, *flags, **kw):
                 else:
                     stream = True
                 await ctx.send("Processing playlist, you can queue other songs meanwhile.")
+                logging.debug(f"query is {query!r}"); logging.debug(f"stream is {stream!r}"); logging.debug(f"mtag is {mtag!r}")
                 playlist_name, failures = await process_yt_playlist(query, stream, mtag)
                 await ctx.send(f"**Added {playlist_name!r} to the queue. Failed to load {failures} songs.**")
                 print(f"time: {finished()}")
@@ -144,6 +152,7 @@ async def play(ctx, query: str, *flags, **kw):
         
         try:
             player = await get_player(url)
+            # logging.debug(f"player is: {player!r}")
 
             if player is None:
                 await ctx.send("Problem downloading the song, assert the url is valid.")
@@ -157,6 +166,8 @@ async def play(ctx, query: str, *flags, **kw):
                 
                 set_current_player(player)
                 set_np(player.title)
+                set_duration(0)
+                logging.debug(get_duration())
                 print(f"np is now: {player.title}")
 
         except youtube_dl.DownloadError as e:
@@ -196,6 +207,7 @@ async def skip(ctx):
             pass
         else:
             await ctx.send("You lack privilege to skip this song.")
+            return
         
 
     ctx.voice_client.stop()
@@ -262,6 +274,8 @@ async def show_queue(ctx):
 @bot.command(name='move', aliases=["m", "mo", "mov", "flytta"], help='Move a song in the queue to a new position')
 @is_author_in_voice_channel()
 async def move(ctx, from_position: int, to_position: int = 1):
+    if from_position == 1:
+        await ctx.send("trying to move the first song to position 1 in queue?? retard")
     if len(queue) >= from_position > 0:
         # Adjust for 0-based indexing
         from_index = from_position - 1
@@ -425,17 +439,21 @@ async def silence(ctx):
 
 @bot.command(name="replace", help="Replace current song in cache with given url")
 async def replace(ctx, url):
-    logging.debug(f"url to replace WITH: {url}")
-    url_to_work_with = get_current_player_url()
-    logging.debug(f"url to work with: {url_to_work_with}")
-    player = await get_player(url)
-    logging.debug(f"cleaned up url: {player.url}")
-    # await skip(ctx)
-    new_path = get_path_from_url(player.url)
-    # remove_cached_audio(url_to_work_with)
-    set_path_for_url(new_path, url_to_work_with)
-    remove_cache_entry(player.url)
-    await ctx.send('Successfully replaced cached audio')
+    async with ctx.typing():
+        logging.debug(f"url to replace WITH: {url}")
+        url_to_work_with = get_current_player_url()
+        logging.debug(f"url to work with: {url_to_work_with}")
+        player = await get_player(url)
+        logging.debug(f"cleaned up url: {player.url}")
+        # await skip(ctx)
+        new_path = get_path_from_url(player.url)
+        # remove_cached_audio(url_to_work_with)
+        set_path_for_url(new_path, url_to_work_with)
+        remove_cache_entry(player.url)
+        add_to_q(player)
+        if get_current_player_url() == url_to_work_with:
+            await skip(ctx)
+        await ctx.send('Successfully replaced cached audio')
 
 
 @bot.command(name="tag", help="Create a new music tag")
@@ -463,3 +481,16 @@ async def trash(ctx):
         await skip(ctx)
     else:
         await ctx.send("Something went wrong.")
+
+
+@bot.command(name="duration", help="Show how much left it is of the currently played song")
+async def duration(ctx):
+    if not ctx.voice_client.is_playing():
+        await ctx.send("Nothing currently playing to display duration of.")
+        return
+    if not get_current_player_duration():
+        await ctx.send("duration not existent for this song")
+        return
+    currently_at_minutes, currently_at_seconds = divmod(get_duration(), 60)
+    player_dur_minutes, player_dur_seconds     = divmod(get_current_player_duration(), 60)
+    await ctx.send(f"{currently_at_minutes}:{currently_at_seconds} / {player_dur_minutes}:{player_dur_seconds}")
